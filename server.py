@@ -62,7 +62,23 @@ def logout():
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html')
+    secrets = {}
+    for view in current_user.views:
+        s = view.secret
+        secrets[s.id] = {
+            'name': s.name,
+            'time': s.time,
+            'author': s.authorid,
+            'parent_': s.parentid,
+            'children': [child.id for child in s.children],
+            'viewers': {
+                group: [viewer.id for viewer in viewers]
+                for group, viewers in s.knownviewers(current_user).items()
+            }
+        }
+        if view.viewed: secrets[s.id]['body'] = s.body
+
+    return render_template('index.html', secrets=secrets)
 
 from functools import wraps
 def jsonp(f):
@@ -78,24 +94,6 @@ def jsonp(f):
             mimetype += 'json'
         return current_app.response_class(data, mimetype=mimetype)
     return wraped
-
-@app.route('/secrets', methods=['GET', 'POST'])
-@login_required
-@jsonp
-def secrets():
-    secrets = {}
-    for view in current_user.views:
-        secret = view.secret
-        secrets[secret.id] = {
-            'name': secret.name,
-            'time': secret.time,
-            'author': secret.authorid,
-            'parent': secret.parentid,
-            'children': [child.id for child in secret.children]
-        }
-        if view.viewed:
-            secrets[secret.id]['body'] = secret.body
-    return secrets
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
