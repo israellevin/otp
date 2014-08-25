@@ -44,7 +44,7 @@ class Viewer(Base, UserMixin):
         session.flush()
 
     def __repr__(self):
-        return self.name
+        return 'u:' + self.name
 
     @classmethod
     def getbyid(cls, id):
@@ -65,6 +65,9 @@ class View(Base):
     def __init__(self, secret, viewer):
         self.secretid, self.viewerid = secret.id, viewer.id
         session.flush()
+
+    def __repr__(self):
+        return "v:%s->%s" % (self.viewer.name, self.secret.name)
 
     @classmethod
     def get(cls, secret, viewer, personal=None, viewed=None):
@@ -87,6 +90,9 @@ class Revelation(Base):
         self.revealedid, self.revealerid = revealed.id, revealer.id
         if public is not None: self.public = public
         revealed.reveal(revealer.viewers)
+
+    def __repr__(self):
+        return "r:%s->%s" % (self.revealer.name, self.revealed.name)
 
 class Secret(Base):
     __tablename__ = 'secrets'
@@ -171,7 +177,7 @@ class Secret(Base):
         return viewers
 
     def __repr__(self):
-        return "*%i-%s*" % (self.id, self.name)
+        return 's:' + self.name
 
 if __name__ == '__main__':
 
@@ -191,8 +197,9 @@ if __name__ == '__main__':
     us.append(Viewer('xao'))
     ss = []
     ss.append(Secret('private from i to g', 'actual content', us[0], None, [us[1]]))
-    ss.append(Secret('g tells xbu about 0', 'not much', us[1], None, [us[2]], [ss[0]]))
-    ss.append(Secret('g tells xao about 0', 'even less', us[1], None, [us[3]], [ss[0]]))
+    ss.append(Secret('g tells xbu about 0', 'not much', us[1], ss[0], [us[2]], [ss[0]]))
+    ss.append(Secret('g tells xao about 0', 'even less', us[1], ss[1], [us[3]], [ss[0]]))
+    ss.append(Secret('gs char sheet', 'lesser', us[1], None, [us[0]]))
     session.commit()
 
     for u in us:
