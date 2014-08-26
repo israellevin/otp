@@ -11,8 +11,18 @@
     background: yellow;
     color: black;
 }
-p.message {
+p.message{
     color: #335E79;
     padding: 1em;
     background: #CADEEB;
+}
+
+#threads, #secrets, #composearea{
+    border: 1px solid black;
+    height: 10em;
+    width: 100%;
+}
+
+.unviewed{
+    background: yellow;
 }

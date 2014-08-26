@@ -66,11 +66,12 @@ def index():
     for view in current_user.views:
         s = view.secret
         secrets[s.id] = {
+            'id': s.id,
             'name': s.name,
             'time': s.time,
-            'author': s.authorid,
-            'parent_': s.parentid,
-            'children': [child.id for child in s.children],
+            'authorid': s.authorid,
+            'parentid': s.parentid,
+            'childids': [child.id for child in s.children],
             'viewers': {
                 group: [viewer.id for viewer in viewers]
                 for group, viewers in s.knownviewers(current_user).items()
