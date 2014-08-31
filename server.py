@@ -2,6 +2,7 @@
 
 import db
 
+from werkzeug.exceptions import BadRequest
 from flask import(
         Flask,
         abort,
@@ -39,16 +40,30 @@ def load_user(userid):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if not 'uid' in request.args:
+    if not 'passphrase' in request.args:
         return ''.join([
             "<div>%s</div>" % message for message in get_flashed_messages()
         ]) + '''
             <form>
-                <input name=uid autofocus>
+                <input name=passphrase autofocus>
                 <input name=next type=hidden value="%s">
             </form>
         ''' % (request.args.get('next') or '',)
-    user = db.Viewer.getbyid(request.args['uid'])
+    if 'name' in request.args:
+        user = db.Viewer(request.args['name'], request.args['passphrase'])
+    else:
+        user = db.Viewer.getbypass(request.args['passphrase'])
+    if user is None:
+        flash('New user')
+        return ''.join([
+            "<div>%s</div>" % message for message in get_flashed_messages()
+        ]) + '''
+            <form>
+                <input name=name autofocus>
+                <input name=passphrase type=hidden value="%s">
+                <input name=next type=hidden value="%s">
+            </form>
+        ''' % (request.args['passphrase'], request.args.get('next') or '')
     try: login_user(user)
     except AttributeError: flash('Bad login')
     return redirect(request.args.get('next') or url_for('index'))
@@ -59,27 +74,29 @@ def logout():
     session.clear()
     return redirect(request.args.get('next') or url_for('index'))
 
+def jsonablesecret(view):
+    secret = view.secret
+    jsonable = {
+        'id': secret.id,
+        'name': secret.name,
+        'time': secret.time,
+        'authorid': secret.authorid,
+        'parentid': secret.parentid,
+        'childids': [child.id for child in secret.children],
+        'viewers': {
+            group: [viewer.id for viewer in viewers]
+            for group, viewers in secret.knownviewers(current_user).items()
+        }
+    }
+    if view.viewed: jsonable['body'] = secret.body
+    return jsonable
+
 @app.route('/')
 @login_required
 def index():
-    secrets = {}
-    for view in current_user.views:
-        s = view.secret
-        secrets[s.id] = {
-            'id': s.id,
-            'name': s.name,
-            'time': s.time,
-            'authorid': s.authorid,
-            'parentid': s.parentid,
-            'childids': [child.id for child in s.children],
-            'viewers': {
-                group: [viewer.id for viewer in viewers]
-                for group, viewers in s.knownviewers(current_user).items()
-            }
-        }
-        if view.viewed: secrets[s.id]['body'] = s.body
-
-    return render_template('index.html', secrets=secrets)
+    return render_template('index.html', secrets=[
+        jsonablesecret(view) for view in current_user.views
+    ])
 
 from functools import wraps
 def jsonp(f):
@@ -87,14 +104,24 @@ def jsonp(f):
     def wraped(*args, **kwargs):
         data = json.dumps(f(*args, **kwargs), indent=4)
         mimetype = 'application/'
-        callback = request.values.get('callback', False)
-        if callback:
-            data = "%s(%s)" % (str(callback), data)
+        try:
+            data = "%s(%s)" % (request.values['callback'], data)
             mimetype += 'javascript'
-        else:
+        except BadRequest as e:
             mimetype += 'json'
         return current_app.response_class(data, mimetype=mimetype)
     return wraped
+
+@app.route('/secret', methods=['GET', 'POST'])
+@login_required
+@jsonp
+def getsecret():
+    if not 'id' in request.args: return {'error': 'no id given'}
+    secret = db.Secret.getbyid(request.args.get('id'));
+    if secret is None: return {'error': 'bad id'}
+    view = db.View.get(secret, current_user, False, False, True)
+    if not view: return {'error': 'unauthorized'}
+    return jsonablesecret(view)
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
