@@ -1,0 +1,33 @@
+body{
+    background-color: black;
+    color: #9999AA;
+}
+
+#nojs{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 2em;
+    background: yellow;
+    color: red;
+}
+#log{
+    background: yellow;
+    color: black;
+}
+p.message{
+    color: #335E79;
+    padding: 1em;
+    background: #CADEEB;
+}
+
+#threads, #secrets, #composearea{
+    border: 1px solid black;
+    min-height: 10em;
+    width: 100%;
+}
+
+.unviewed{
+    background-color: yellow;
+}
