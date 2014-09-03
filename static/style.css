@@ -1,3 +1,8 @@
+body{
+    background-color: black;
+    color: #9999AA;
+}
+
 #nojs{
     position: absolute;
     top: 0;
@@ -19,10 +24,10 @@ p.message{
 
 #threads, #secrets, #composearea{
     border: 1px solid black;
-    height: 10em;
+    min-height: 10em;
     width: 100%;
 }
 
 .unviewed{
-    background: yellow;
+    background-color: yellow;
 }

@@ -3,7 +3,8 @@
 <meta charset=utf-8>
 <script src="{{ url_for('static', filename='jquery.min.js') }}"></script>
 <script>
-    var secrets = {{ secrets|tojson }}
+    var secrets = {{ secrets|tojson }};
+    var viewers = {{ viewers|tojson }};
 </script>
 <script src="{{ url_for('static', filename='otp.js') }}"></script>
 <link rel=stylesheet type=text/css href="{{ url_for('static', filename='style.css') }}">

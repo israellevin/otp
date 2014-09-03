@@ -65,6 +65,11 @@ class Viewer(Base, UserMixin):
         ).one()
         except exc.SQLAlchemyError: return None
 
+    @classmethod
+    def getall(cls):
+        try: return session.query(cls.id, cls.name, cls.lastseen).all()
+        except exc.SQLAlchemyError: return None
+
 class View(Base):
     __tablename__ = 'views'
     id = Column(Integer, primary_key=True)
@@ -201,11 +206,6 @@ class Secret(Base):
                 viewers.update(secret.knownviewers(viewer, ignore))
         return viewers
 
-    @classmethod
-    def getbyid(cls, id):
-        try: return session.query(cls).filter_by(id=id).one()
-        except exc.SQLAlchemyError: return None
-
 if __name__ == '__main__':
 
     from os.path import isfile
@@ -224,6 +224,7 @@ if __name__ == '__main__':
     us.append(Viewer('xao', '4'))
     ss = []
     ss.append(Secret('private from i to g', 'actual content', us[0], None, [us[1]]))
+    View.get(ss[0], us[2], False, True, True)
     ss.append(Secret('g tells xbu about 1', 'not much', us[1], ss[0], [us[2]], [ss[0]]))
     ss.append(Secret('g tells xao about 2', 'even less', us[1], ss[1], [us[3]], [ss[0]]))
     ss.append(Secret('gs char sheet', 'lesser', us[1], None, [us[0]]))

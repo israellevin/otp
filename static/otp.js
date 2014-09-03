@@ -1,147 +1,28 @@
-var log = console.log;
+(function(){'use strict';
 
-// General notice: we trust the server to inject the global `secrets` object.
-
-// Create and return a secret div from a viewable secret ID.
-function makesecretdiv(secret){
-    return $('<div>').html('<h2>' + secret.name + '</h2>');
-}
-
-// Draw a secret and everything leading up to it.
-function drawsecretsback(secretsdiv, secret){
-    secretsdiv.prepend(makesecretdiv(secret));
-    if(secret.parentid !== null){
-        drawsecretsback(secretsdiv, secrets[secret.parentid]);
+// Helpers
+function iterate(array, func, thisarg){
+    if(thisarg) func = func.bind(thisarg);
+    for(var idx = 0, len = array.length; idx < len; idx++){
+        if(func(array[idx], idx) === false) break;
     }
 }
-
-// Create and return a thread div from a valid thread object.
-// This should include at least the following members:
-//     rootid - the ID of the root secret
-//     targetid - the ID of the secret to be displayed on click
-//     secrets - an array of IDs of all the viewable secrets on the tread
-//     unviewed - subset of secrets, listing IDs of unviewed ones
-function makethreaddiv(thread, secretsdiv){
-    var root = secrets[thread.rootid];
-    if('undefined' === typeof(root)) return false;
-    return $('<div>').
-        html('<h2>' + root.name + '</h2>').data('thread', thread).
-        addClass('thread ' + (thread.unviewed.length > 0 ? 'unviewed' : 'viewed')).
-        click(function(){
-            secretsdiv.empty();
-            if(thread.targetid === null){
-                log('single unread secret', secrets[thread.rootid]);
-            }else{
-                drawsecretsback(secretsdiv, secrets[thread.targetid]);
-            }
-        });
-    ;
-}
-
-// Add a thread to the right place in the threadslist.
-// Threads that contain unviewed secrets come first, and are sorted by oldest
-// unviewed secret. Threads that do not come after them and are sorted by newest
-// (viewed) secret.
-function addthread(threadsdiv, secretsdiv, thread){
-    var newdiv = makethreaddiv(thread, secretsdiv);
-    threadsdiv.find('div.thread').each(function(){
-        var existingdiv = $(this);
-        var existingthread = existingdiv.data('thread');
-        log(existingthread);
-        if(thread.unviewed.length > 0){
-            if(existingthread.unviewed.length > 0){
-                if(thread.oldestunviewed < existingthread.oldestunviewed){
-                    return existingdiv.before(newdiv);
-                }
-            }else{
-                return existingdiv.before(newdiv);
-            }
-        }else{
-            if(existingthread.unviewed.length === 0){
-                if(thread.targetid > existingthread.targetid){
-                    return existingdiv.before(newdiv);
-                }
-            }
-        }
-    });
-    return threadsdiv.append(newdiv);
-}
-
-// Recursively find all the visible descendants of a secret. We create a
-// separate containing only unviewed secrets, since this is handy information.
-// Also note that the list is self inclusive, since it's used to get threads.
-function finddescendants(rootid){
-    var descendants = {secrets: [], unviewed: []};
-    if(secrets[rootid]){
-        descendants.secrets.push(rootid);
-        if('string' !== typeof(secrets[rootid].body)){
-            descendants.unviewed.push(rootid);
-        }
-        $.each(secrets[rootid].childids, function(idx, childid){
-            $.map(finddescendants(childid), function(value, key){
-                descendants[key] = descendants[key].concat(value);
-            });
-        });
-    }
-    return descendants;
-}
-
-// Initialize.
-$(function(){
-    var keys = $.map(secrets, function(secret, key){
-        return parseInt(key, 10);
-    }).sort();
-    var threadsdiv = $('#threads');
-    var secretsdiv = $('#secrets');
-    var thread;
-    while(keys.length > 0){
-        thread = finddescendants(keys[0]);
-        thread.rootid = keys[0];
-        if(thread.unviewed.length > 0){
-            thread.oldestunviewed = Math.min.apply(null, thread.unviewed);
-            thread.targetid = secrets[thread.oldestunviewed].parentid;
-        }else{
-            thread.targetid = Math.max.apply(null, thread.secrets);
-        }
-        $.each(thread.secrets, function(idx, key){
-            var pos = keys.indexOf(key);
-            if(pos > -1) keys.splice(pos, 1);
-        });
-        addthread(threadsdiv, secretsdiv, thread);
-    }
-    body = $('body');
-    //$.each(secrets, function(key, secret){
-        //body.append(makesecretdiv(secret))
-    //});
-    $('#nojs').remove();
-});
-
-
-// These will come in handy soon.
-
-// Recursively find the oldest visible ancestor of a secret.
-function findroot(leafid){
-    try{return findroot(secrets[leafid].parentid) || leafid;}
-    catch(err){return 'undefined' !== typeof(secrets[leafid]) && leafid;}
-}
-
-function jsonp(method, data, callback){
+function jsonp(url, data, callback){
     $.ajax({
-        url: method,
+        url: url,
         dataType: 'jsonp',
         data: data,
         success:function(data){
-            if(null !== data && 'string' === typeof data.error) log(data.error);
+            if(data && typeof data.error === 'string') log(data);
             callback(data);
         },
         error:function(){
-            log('Unable to retrieve ' + method);
+            log('Unable to retrieve ' + url);
         }
     });
 }
-
 function nicedate(d){
-    if('undefined' === typeof(d)) d = new Date();
+    if('undefined' === typeof d) d = new Date();
     var padded = $.map(
         [
             d.getMonth() + 1,
@@ -157,3 +38,205 @@ function nicedate(d){
     padded.unshift(d.getFullYear());
     return padded.slice(0, 3).join('-') + ' ' +  padded.slice(3).join(':');
 }
+var log = console.log;
+
+// Turn a server injected secret into a usefull, displayable object.
+function Secret(secret){
+    $.extend(this, secret);
+}
+Secret.prototype.withdiv = function(callback){
+    // If the secret has a body, we create the div and hand it to the callback.
+    if(typeof this.body === 'string'){
+        return callback(
+            $('<div>').addClass('secret').append(
+                $('<h2>').text(this.name),
+                $('<p>').text(this.body)
+            )
+        );
+    }
+    // Otherwise, it is an unviewed secret, so we fetch it from the server.
+    var secret = this;
+    jsonp('/secret', {
+        id: this.id
+    }, function(newsecret){
+        if(typeof newsecret.body === 'string'){
+            $.extend(secret, newsecret).withdiv(callback);
+            secret.thread.update(secret.id);
+        }
+    });
+};
+
+// Turn a server injected list of secrets into an indexed, linked object.
+function Secrets(secrets){
+    this.dict = {};
+    this.array = secrets.map(function(secret){
+        return this.dict[secret.id] = new Secret(secret);
+    }, this);
+    iterate(this.array, function(secret){
+        if(secret.parentid){
+            secret.parent_ = this.dict[secret.parentid];
+        }
+        secret.children_ = secret.childids.map(function(childid){
+            return this.dict[childid];
+        }, this);
+    }, this);
+}
+
+// Take a root ID and an indexed, linked list of possible members, and turn it
+// into a linked object.
+function Thread(rootid, secrets){
+    this.root = secrets[rootid];
+    this.listeners = [];
+    this.secrets = {};
+
+    // Recursively gather thread related information.
+    function accumulatesecrets(secret){
+        var ids = [[secret.id], []];
+        this.secrets[secret.id] = secret;
+        secret.thread = this;
+        if(typeof secret.body !== 'string'){
+            ids[1].push(secret.id);
+        }
+
+        iterate(secret.children_, function(child){
+            iterate(accumulatesecrets.call(this, child), function(array, idx){
+                ids[idx] = ids[idx].concat(array);
+            });
+        }, this);
+        return ids
+    }
+    this.secretids = accumulatesecrets.call(this, this.root);
+    this.unviewedids = this.secretids[1];
+    this.secretids = this.secretids[0];
+    this.gettarget();
+}
+
+// Get thread's target (the secret to show when it's clicked).
+Thread.prototype.gettarget = function(){
+    if(this.unviewedids.length > 0){
+        this.oldestunviewedid = Math.min.apply(null, this.unviewedids);
+        if(this.secrets[this.oldestunviewedid]){
+            this.targetid = this.secrets[this.oldestunviewedid].parentid;
+        }
+    }
+    if(!this.targetid) this.targetid = Math.max.apply(null, this.secretids);
+    return this.target = this.secrets[this.targetid];
+};
+
+// Update target after a secret was viewed and trigger update event.
+Thread.prototype.update = function(viewed){
+    if(typeof viewed !== 'undefined'){
+        this.unviewedids.splice(this.unviewedids.indexOf(viewed.id), 1);
+    }
+    this.gettarget();
+    iterate(this.listeners, function(listener){listener(this);}, this);
+};
+
+// A wrapper for holding a sorted, self filling array of threads.
+function Threads(secrets){
+    this.threadsarray = [];
+    var ids = secrets.array.map(function(secret){
+        return secret && secret.id;
+    }).sort();
+    var thread;
+    while(ids.length > 0){
+        thread = new Thread(ids[0], secrets.dict);
+        iterate(thread.secretids, function(id){
+            var pos = ids.indexOf(id);
+            if(pos > -1) ids.splice(pos, 1);
+        });
+        this.add(thread);
+    }
+
+    return this;
+}
+
+// Threads with unviewed secrets come first, sorted by oldest unviewed secret,
+// then fully viewed threads sorted by newest (viewed) secret.
+Threads.prototype.add = function(thread){
+    var threads = this;
+    var threadsarray = this.threadsarray;
+    var place = false;
+    iterate(threadsarray, function(existingthread, idx){
+        if(thread.unviewedids.length > 0){
+            if(existingthread.unviewedids.length > 0){
+                if(thread.oldestunviewedid < existingthread.oldestunviewedid){
+                    place = idx;
+                    return false;
+                }
+            }else{
+                place = idx;
+                return false;
+            }
+        }else{
+            if(existingthread.unviewedids.length === 0){
+                if(thread.targetid > existingthread.targetid){
+                    place = idx;
+                    return false;
+                }
+            }
+        }
+        return true;
+    });
+    if(place === false) place = threadsarray.length;
+    threadsarray.splice(place, 0, thread);
+
+    // Update list on thread update.
+    thread.listeners.push(function(){
+        threadsarray.splice(threadsarray.indexOf(thread), 1);
+        threads.add(thread);
+        threads.draw();
+    });
+
+    return this;
+};
+
+function rprtrds(threads){
+    return threads.threadsarray.reduce(function(prv, cur){
+        return '-' + prv + '-' + cur.root.name;
+    }, '');
+}
+
+// Draw the listed threads into a div and bind their events.
+// TODO This will have cool animations for live update.
+Threads.prototype.draw = function(threadsdiv, secretsdiv){
+    var threads = this;
+    if(threadsdiv) this.threadsdiv = threadsdiv;
+    if(secretsdiv) this.secretsdiv = secretsdiv;
+
+    this.threadsdiv.empty().append(this.threadsarray.map(function(thread){
+        return $('<div>').addClass('thread' + (
+            (thread.unviewedids.length > 0) ? ' unviewed' : ''
+        )).append(
+            $('<p>').text(thread.root.name)
+        ).click(function(evt){
+            threads.secretsdiv.empty();
+            for(
+                var secret = thread.secrets[thread.targetid];
+                secret;
+                secret = secret.parent_
+            )secret.withdiv(function(div){
+                threads.secretsdiv.prepend(div);
+            });
+        });
+    }));
+    return this;
+};
+
+function Composer(div){
+    $('<textarea>').keyup(function(evt){
+        if(evt.ctrlKey && 13 === evt.which) log($(this).val());
+    }).appendTo(div).focus();
+}
+
+// On ready.
+$(function(){
+    new Threads(new Secrets(secrets)).draw(
+        $('#threads'), $('#secrets')
+    );
+
+    new Composer($('#compose'));
+
+    $('#nojs').remove();
+});
+}());

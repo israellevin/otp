@@ -94,7 +94,7 @@ def jsonablesecret(view):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', secrets=[
+    return render_template('index.html', viewers=db.Viewer.getall(), secrets=[
         jsonablesecret(view) for view in current_user.views
     ])
 
@@ -116,12 +116,24 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecret():
-    if not 'id' in request.args: return {'error': 'no id given'}
-    secret = db.Secret.getbyid(request.args.get('id'));
-    if secret is None: return {'error': 'bad id'}
+    # Fake a secret from ID.
+    secret = type('', (), {'id': request.args['id']})
     view = db.View.get(secret, current_user, False, False, True)
     if not view: return {'error': 'unauthorized'}
     return jsonablesecret(view)
+
+@app.route('/secret', methods=['GET', 'POST'])
+@login_required
+@jsonp
+def postsecret():
+    return Secret(
+        request.args['name'],
+        request.args['body'],
+        current_user,
+        None,
+        [us[0]]
+    ).time
+    return True
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')
