@@ -22,12 +22,26 @@ p.message{
     background: #CADEEB;
 }
 
-#threads, #secrets, #composearea{
-    border: 1px solid black;
+#threads, #secrets{
+    border: 1px solid white;
     min-height: 10em;
     width: 100%;
 }
 
 .unviewed{
     background-color: yellow;
+}
+
+div.composer > *{
+    display: block;
+    width: 100%;
+    -webkit-box-sizing: border-box;
+    -moz-box-sizing: border-box;
+    box-sizing: border-box;
+}
+
+div.viewers ul{
+    height: 5em;
+    overflow: auto;
+    border: 1px solid white;
 }

@@ -222,6 +222,10 @@ if __name__ == '__main__':
     us.append(Viewer('ghoula', '2'))
     us.append(Viewer('xbu', '3'))
     us.append(Viewer('xao', '4'))
+    us.append(Viewer('xao', '4'))
+    us.append(Viewer('xao', '4'))
+    us.append(Viewer('xao', '4'))
+    us.append(Viewer('xao', '4'))
     ss = []
     ss.append(Secret('private from i to g', 'actual content', us[0], None, [us[1]]))
     View.get(ss[0], us[2], False, True, True)
