@@ -11,13 +11,13 @@
 <body>
     <div id=nojs>Either you are not conected, or you have JavaScript disabled, or we have a showstopping bug.</div>
     <div id=toolbar>
-        <p id=compose>compose</p>
         <a href="{{ url_for('logout') }}">sign out [{{ current_user.name }}]</a>
     </div>
     <div style="clear:both"></div>
     <div id=log></div>
     <div id=threads></div>
     <div id=secrets></div>
+    <p id=compose>compose</p>
 {% for message in get_flashed_messages() %}
 <p class=message>{{ message }}
 {% endfor %}

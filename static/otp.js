@@ -264,12 +264,19 @@ function Composer(trigger, secrets, viewers){
         var authparentul = this.makeauthlist();
         var authchildrenul = this.makeauthlist();
 
-        // Set up secret clicks to add secrets to the right list.
+        // Set up secret clicks to add secrets to the focused list.
         this.secrets.listener = function(secret){
             var target;
             if(authparentul.hasClass('focused')) target = authparentul;
             else if(authchildrenul.hasClass('focused')) target = authchildrenul;
             else return;
+
+            target.find('li').each(function(idx, secretli){
+                if($(secretli).data('secretid') === secret.id){
+                    return target = false;
+                }
+            });
+            if(target === false) return;
 
             var secretli = $('<li>').data('secretid', secret.id).click(
                     function(){secretli.remove();}
@@ -282,11 +289,11 @@ function Composer(trigger, secrets, viewers){
                 $('<div>').append(authparentul, authchildrenul)
             ),
             $('<input>').attr('placeholder', 'title'),
-            $('<textarea>').keyup(function(evt){
+            $('<textarea>').attr('placeholder', 'secret').keyup(function(evt){
                 if(evt.ctrlKey && 13 === evt.which){
                     this.post();
                 }
-            }.bind(this)),
+            }.bind(this)).text(''),
             $('<button>').text('post').click(function(){
                 this.post();
             }.bind(this)),
@@ -309,7 +316,6 @@ $(function(){
     var secrets = new Secrets(rawsecrets);
     new Threads(secrets).draw($('#threads'), $('#secrets'));
     new Composer($('#compose'), secrets, rawviewers);
-    $('#compose').click();
 
     $('#nojs').remove();
 });
