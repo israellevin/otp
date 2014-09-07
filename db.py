@@ -33,6 +33,7 @@ from datetime import datetime
 
 from flask_login import UserMixin
 from hashlib import sha256
+SALT = 'salt, but it sure tastes good'
 class Viewer(Base, UserMixin):
     __tablename__ = 'viewers'
     id = Column(Integer, primary_key=True)
@@ -43,7 +44,7 @@ class Viewer(Base, UserMixin):
     def __init__(self, name, passphrase):
         self.name = name
         self.passphrasehash = sha256(str.encode(
-            'salt, but it sure tastes good' + passphrase
+            SALT + passphrase
         )).hexdigest()
         self.lastseen = datetime.now()
         session.flush()
@@ -60,7 +61,7 @@ class Viewer(Base, UserMixin):
     def getbypass(cls, passphrase):
         try: return session.query(cls).filter_by(
             passphrasehash=sha256(str.encode(
-                'salt, but it sure tastes good' + passphrase
+                SALT + passphrase
             )).hexdigest()
         ).one()
         except exc.SQLAlchemyError: return None
@@ -73,32 +74,32 @@ class Viewer(Base, UserMixin):
 class View(Base):
     __tablename__ = 'views'
     id = Column(Integer, primary_key=True)
-    secretid = Column(Integer, ForeignKey('secrets.id'))
     viewerid = Column(Integer, ForeignKey('viewers.id'))
+    secretid = Column(Integer, ForeignKey('secrets.id'))
     personal = Column(Boolean)
     viewed = Column(DateTime)
 
-    secret = relationship('Secret', backref='views')
     viewer = relationship('Viewer', backref='views')
+    secret = relationship('Secret', backref='views')
 
-    def __init__(self, secret, viewer):
-        self.secretid, self.viewerid = secret.id, viewer.id
+    def __init__(self, viewerid, secretid):
+        self.viewerid ,self.secretid = viewerid, secretid
         session.flush()
 
     def __repr__(self):
         return "v:%s->%s" % (self.viewer.name, self.secret.name)
 
     @classmethod
-    def get(cls, secret, viewer, create=None, personal=None, viewed=None):
+    def get(cls, viewerid, secretid, create=None, personal=None, viewed=None):
         try:
             view = session.query(cls).filter_by(
-                secretid=secret.id, viewerid=viewer.id
+                secretid=secretid, viewerid=viewerid
             ).one()
         except exc.SQLAlchemyError:
             if not create:
                 return False
             else:
-                view = cls(secret, viewer)
+                view = cls(viewerid, secretid)
 
         if personal is not None: view.personal = personal
         if type(viewed) is datetime: view.viewed = viewed
@@ -169,28 +170,30 @@ class Secret(Base):
     )
 
     def __init__(
-        self, name, body, author,
-        parent=None, viewers=[], revealed=[]
+        self, name, body, authorid,
+        parentid=None, viewerids=[], authparentids=[], authchildrenids=[]
     ):
         self.time = datetime.now()
         self.name, self.body = name, body
-        self.authorid = author.id
-        if parent is not None: self.parentid = parent.id
+        self.authorid = authorid
+        if parentid is not None: self.parentid = parentid
         session.flush()
 
-        View.get(self, author, True, True, self.time)
-        for viewer in viewers:
-            if type(viewer) is Viewer: View.get(self, viewer, True, True)
-            elif type(viewer) is Secret: Revelation(self, viewer, True)
-        for secret in revealed: Revelation(secret, self)
-        session.flush()
+        View.get(authorid, self.id, True, True, self.time)
+        for viewerid in viewerids:
+            View.get(viewerid, self.id, True, True)
+        for secretid in authparentids:
+            Revelation(self, Secret.getbyid(secretid), True)
+        for secretid in authchildrenids:
+            Revelation(Secret.getbyid(secretid), self)
+        session.commit()
 
     def __repr__(self):
         return 's:' + self.name
 
     def reveal(self, viewers):
         for viewer in viewers:
-            View.get(self, viewer, True)
+            View.get(viewer.id, self.id, True)
         for child in self.authchildren: child.reveal(viewers)
         session.flush()
 
@@ -205,6 +208,11 @@ class Secret(Base):
             if viewer in secret.viewers:
                 viewers.update(secret.knownviewers(viewer, ignore))
         return viewers
+
+    @classmethod
+    def getbyid(cls, id):
+        try: return session.query(cls).filter_by(id=id).one()
+        except exc.SQLAlchemyError: return None
 
 if __name__ == '__main__':
 
@@ -222,17 +230,13 @@ if __name__ == '__main__':
     us.append(Viewer('ghoula', '2'))
     us.append(Viewer('xbu', '3'))
     us.append(Viewer('xao', '4'))
-    us.append(Viewer('xao', '4'))
-    us.append(Viewer('xao', '4'))
-    us.append(Viewer('xao', '4'))
-    us.append(Viewer('xao', '4'))
     ss = []
-    ss.append(Secret('private from i to g', 'actual content', us[0], None, [us[1]]))
-    View.get(ss[0], us[2], False, True, True)
-    ss.append(Secret('g tells xbu about 1', 'not much', us[1], ss[0], [us[2]], [ss[0]]))
-    ss.append(Secret('g tells xao about 2', 'even less', us[1], ss[1], [us[3]], [ss[0]]))
-    ss.append(Secret('gs char sheet', 'lesser', us[1], None, [us[0]]))
-    ss.append(Secret('stam', 'blam', us[0], None, [us[1]]))
+    ss.append(Secret('private from i to g', 'actual content', us[0].id, None, [us[1].id]))
+    View.get(us[1].id, ss[0].id, False, True, True)
+    ss.append(Secret('g tells xbu about 1', 'not much', us[1].id, ss[0].id, [us[2].id], [], [ss[0].id]))
+    ss.append(Secret('g tells xao about 2', 'even less', us[1].id, ss[1].id, [us[3].id], [], [ss[0].id]))
+    ss.append(Secret('gs char sheet', 'lesser', us[1].id, None, [us[0].id]))
+    ss.append(Secret('stam', 'blam', us[0].id, None, [us[1].id]))
     session.commit()
 
     for u in us:
