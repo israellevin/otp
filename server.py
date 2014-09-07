@@ -116,24 +116,26 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecret():
-    # Fake a secret from ID.
-    secret = type('', (), {'id': request.args['id']})
-    view = db.View.get(secret, current_user, False, False, True)
+    view = db.View.get(current_user.id, request.args['id'], False, False, True)
     if not view: return {'error': 'unauthorized'}
     return jsonablesecret(view)
 
-@app.route('/secret', methods=['GET', 'POST'])
+@app.route('/post', methods=['GET', 'POST'])
 @login_required
 @jsonp
 def postsecret():
-    return Secret(
-        request.args['name'],
-        request.args['body'],
-        current_user,
-        None,
-        [us[0]]
-    ).time
-    return True
+    return {
+        'posttime':
+            db.Secret(
+                request.args.get('name'),
+                request.args.get('body'),
+                current_user.id,
+                request.args.get('parentid'),
+                request.args.getlist('viewerids[]'),
+                request.args.getlist('authparentids[]'),
+                request.args.getlist('authchildrenidsp[]')
+            ).time
+    }
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0')

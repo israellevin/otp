@@ -8,7 +8,8 @@ function iterate(array, func, thisarg){
         if(func(array[idx], idx) === false) break;
     }
 }
-function jsonp(url, data, callback){
+function jsonp(url, data, callback, thisarg){
+    if(thisarg) callback = callback.bind(thisarg);
     $.ajax({
         url: url,
         dataType: 'jsonp',
@@ -72,7 +73,7 @@ function Secret(secret, click){
                 this.update(secret).withdiv(callback);
                 this.thread.update(this.id);
             }
-        }.bind(this));
+        }, this);
     };
 }
 
@@ -123,13 +124,11 @@ function Thread(rootid, secrets){
 
     // Get thread's target (the secret to show when it's clicked).
     this.gettarget = function(){
-        if(this.unviewedids.length > 0){
-            this.oldestunviewedid = Math.min.apply(null, this.unviewedids);
-            if(this.secrets[this.oldestunviewedid]){
-                this.targetid = this.secrets[this.oldestunviewedid].parentid;
-            }
-        }
-        if(!this.targetid) this.targetid = Math.max.apply(null, this.secretids);
+        if(this.secretids.length === 1) this.targetid = this.secretids[0]
+        else if(this.unviewedids.length > 0){
+            this.targetid = Math.min.apply(null, this.unviewedids);
+            this.targetid = this.secrets[this.targetid].parentid || this.targetid;
+        }else this.targetid = Math.max.apply(null, this.secretids);
         return this.target = this.secrets[this.targetid];
     };
     this.gettarget();
@@ -237,12 +236,7 @@ function Composer(trigger, secrets, viewers){
 
     this.dismiss = function(){
         this.form.replaceWith(this.trigger);
-        //this.secrets.listener = function(){};
-    };
-
-    this.post = function(){
-        log('posting');
-        this.dismiss();
+        this.secrets.listener = function(){};
     };
 
     this.makeauthlist = function(){
@@ -252,48 +246,90 @@ function Composer(trigger, secrets, viewers){
         return list;
     };
 
+    this.getids = function(container){
+        return $.map(container.children(), function(item){
+            var id = $(item).data('id');
+            if(secrets.dict[id]) return id;
+        });
+    };
+
     // Create that crazy compose form.
     this.makeform = function(){
+        var nameinp = $('<input>').attr('placeholder', 'title');
+        var bodyinp = $('<textarea>').attr('placeholder', 'secret').text('');
+        var parentul = this.makeauthlist();
+        var authparentul = this.makeauthlist();
+        var authchildrenul = this.makeauthlist();
         var viewersul = $('<ul>');
         var potentialviewersul = $('<ul>').append(viewers.map(function(viewer){
-            var viewerli = $('<li>').data('viewerid', viewer[0]).click(
+            var viewerli = $('<li>').data('id', viewer[0]).click(
                 function(){viewerli.prependTo(viewerli.parent().siblings());}
             ).addClass('viewer').text(viewer[1]);
             return viewerli;
         }));
-        var authparentul = this.makeauthlist();
-        var authchildrenul = this.makeauthlist();
 
         // Set up secret clicks to add secrets to the focused list.
         this.secrets.listener = function(secret){
             var target;
-            if(authparentul.hasClass('focused')) target = authparentul;
+            if(parentul.hasClass('focused')) target = parentul.empty();
+            else if(authparentul.hasClass('focused')) target = authparentul;
             else if(authchildrenul.hasClass('focused')) target = authchildrenul;
             else return;
 
             target.find('li').each(function(idx, secretli){
-                if($(secretli).data('secretid') === secret.id){
+                if($(secretli).data('id') === secret.id){
                     return target = false;
                 }
             });
             if(target === false) return;
 
-            var secretli = $('<li>').data('secretid', secret.id).click(
+            var secretli = $('<li>').data('id', secret.id).click(
                     function(){secretli.remove();}
             ).text(secret.name).appendTo(target);
         };
 
-        return $('<div>').addClass('composer').append(
+        this.post = function(){
+            var valid = true;
+            var name = nameinp.val();
+            var body = bodyinp.val();
+
+            this.form.find('*').removeClass('error');
+            if(!name){
+                nameinp.addClass('error');
+                valid = false;
+            }
+            if(!body){
+                bodyinp.addClass('error');
+                valid = false;
+            }
+            if(!valid) return false;
+
+            log(111, this.getids(viewersul));
+            jsonp('/post', {
+                name: name,
+                body: body,
+                parentid: this.getids(parentul)[0],
+                authparentids: this.getids(authparentul),
+                authchildrenids: this.getids(authchildrenul),
+                viewerids: this.getids(viewersul)
+            }, function(posttime){
+                this.dismiss();
+                log(posttime);
+            }, this);
+        };
+
+        // Return the actual form.
+        return this.form = $('<div>').addClass('composer').append(
             $('<div>').addClass('viewers').append(
-                $('<div>').append(potentialviewersul, viewersul),
-                $('<div>').append(authparentul, authchildrenul)
+                $('<div>').append(parentul, authparentul, authchildrenul),
+                $('<div>').append(viewersul, potentialviewersul)
             ),
-            $('<input>').attr('placeholder', 'title'),
-            $('<textarea>').attr('placeholder', 'secret').keyup(function(evt){
+            nameinp,
+            bodyinp.keyup(function(evt){
                 if(evt.ctrlKey && 13 === evt.which){
                     this.post();
                 }
-            }.bind(this)).text(''),
+            }.bind(this)),
             $('<button>').text('post').click(function(){
                 this.post();
             }.bind(this)),
@@ -314,8 +350,12 @@ function Composer(trigger, secrets, viewers){
 $(function(){
     // rawsecrets and rawviewers are injected by server.
     var secrets = new Secrets(rawsecrets);
-    new Threads(secrets).draw($('#threads'), $('#secrets'));
+    var threads = new Threads(secrets).draw($('#threads'), $('#secrets'));
     new Composer($('#compose'), secrets, rawviewers);
+
+    $('#compose').click();
+    window.s = secrets;
+    window.t = threads;
 
     $('#nojs').remove();
 });

@@ -226,17 +226,15 @@ if __name__ == '__main__':
 
     Base.metadata.create_all(bind=engine)
     us = []
-    us.append(Viewer('israel', '1'))
-    us.append(Viewer('ghoula', '2'))
-    us.append(Viewer('xbu', '3'))
-    us.append(Viewer('xao', '4'))
+    us.append(Viewer('רובי', '0'))
+    us.append(Viewer('בנדיקט', '1'))
+    us.append(Viewer('בלייז', '2'))
+    us.append(Viewer('תעוב', '3'))
     ss = []
-    ss.append(Secret('private from i to g', 'actual content', us[0].id, None, [us[1].id]))
-    View.get(us[1].id, ss[0].id, False, True, True)
-    ss.append(Secret('g tells xbu about 1', 'not much', us[1].id, ss[0].id, [us[2].id], [], [ss[0].id]))
-    ss.append(Secret('g tells xao about 2', 'even less', us[1].id, ss[1].id, [us[3].id], [], [ss[0].id]))
-    ss.append(Secret('gs char sheet', 'lesser', us[1].id, None, [us[0].id]))
-    ss.append(Secret('stam', 'blam', us[0].id, None, [us[1].id]))
+    ss.append(Secret('שיחה בספריה', 'שלום רובי', us[1].id, None, [us[0].id]))
+    ss.append(Secret('ווידוי', 'אני אוהבת דבש', us[0].id, ss[0].id, [], [ss[0].id]))
+    ss.append(Secret('בגידה', 'בנדיקט פותח טראמפ לבלייז ושולח לו מנטאלית: קבל את זה, אחי...', us[1].id, ss[1].id, [us[2].id], [], [ss[1].id]))
+    ss.append(Secret('שאננות מעושה', 'באמת? את אוהבת דבש? גם אני...', us[1].id, ss[1].id, [], [ss[1].id]))
     session.commit()
 
     for u in us:
