@@ -1,0 +1,20 @@
+<!doctype html>
+<title>OTP - The One True Page</title>
+<meta charset=utf-8>
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+<div class=messages>
+    {% for message in get_flashed_messages() %}
+    <p class=message>{{message}}
+    {% endfor %}
+</div>
+<form>
+{% if request.args['passphrase'] %}
+    <input name=name autofocus>
+    <input name=passphrase type=password>
+    <input name=prevpassphrase type=hidden value="{{request.args['passphrase']}}">
+    <input type=submit>
+{% else %}
+    <input name=passphrase autofocus>
+{% endif %}
+    <input name=next type=hidden value="{{request.args['next']}}">
+</form>

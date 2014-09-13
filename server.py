@@ -40,39 +40,20 @@ def load_user(userid):
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    logout_user()
+    session.clear()
     if not 'passphrase' in request.args:
-        return ''.join([
-            "<div>%s</div>" % message for message in get_flashed_messages()
-        ]) + '''
-            <form>
-                <input name=passphrase autofocus>
-                <input name=next type=hidden value="%s">
-            </form>
-        ''' % (request.args.get('next') or '',)
+        return render_template('login.html')
     if 'name' in request.args:
         user = db.Viewer(request.args['name'], request.args['passphrase'])
     else:
         user = db.Viewer.getbypass(request.args['passphrase'])
     if user is None:
         flash('New user')
-        return ''.join([
-            "<div>%s</div>" % message for message in get_flashed_messages()
-        ]) + '''
-            <form>
-                <input name=name autofocus>
-                <input name=passphrase type=hidden value="%s">
-                <input name=next type=hidden value="%s">
-            </form>
-        ''' % (request.args['passphrase'], request.args.get('next') or '')
+        return render_template('login.html')
     try: login_user(user)
     except AttributeError: flash('Bad login')
-    return redirect(request.args.get('next') or url_for('index'))
-
-@app.route('/logout')
-def logout():
-    logout_user()
-    session.clear()
-    return redirect(request.args.get('next') or url_for('index'))
+    return redirect(request.args.get('next', url_for('index')))
 
 def jsonablesecret(view):
     secret = view.secret
