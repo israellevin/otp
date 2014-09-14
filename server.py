@@ -64,6 +64,8 @@ def jsonablesecret(view):
         'authorid': secret.authorid,
         'parentid': secret.parentid,
         'childids': [child.id for child in secret.children],
+        'authparentids': [authparent.id for authparent in secret.authparents],
+        'authchildids': [authchild.id for authchild in secret.authchildren],
         'viewers': {
             group: [viewer.id for viewer in viewers]
             for group, viewers in secret.knownviewers(current_user).items()
@@ -75,9 +77,9 @@ def jsonablesecret(view):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', viewers=db.Viewer.getall(), secrets=[
-        jsonablesecret(view) for view in current_user.views
-    ])
+    return render_template('index.html', viewers=db.Viewer.getall(), secrets={
+        view.secretid: jsonablesecret(view) for view in current_user.views
+    })
 
 from functools import wraps
 def jsonp(f):
@@ -114,7 +116,7 @@ def postsecret():
                 request.args.get('parentid'),
                 request.args.getlist('viewerids[]'),
                 request.args.getlist('authparentids[]'),
-                request.args.getlist('authchildrenidsp[]')
+                request.args.getlist('authchildids[]')
             ).time
     }
 

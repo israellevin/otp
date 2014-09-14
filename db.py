@@ -151,7 +151,7 @@ class Secret(Base):
 
     def __init__(
         self, name, body, authorid,
-        parentid=None, viewerids=[], authparentids=[], authchildrenids=[]
+        parentid=None, viewerids=[], authparentids=[], authchildids=[]
     ):
         self.time = datetime.now()
         self.name, self.body = name, body
@@ -164,7 +164,7 @@ class Secret(Base):
             View.get(viewerid, self.id, True, True)
         for secretid in authparentids:
             Revelation(self, Secret.getbyid(secretid))
-        for secretid in authchildrenids:
+        for secretid in authchildids:
             Revelation(Secret.getbyid(secretid), self)
         session.commit()
 
@@ -227,20 +227,27 @@ if __name__ == '__main__':
     ss = []
     # 0
     ss.append(Secret('in the library', 'ruby is searching for benedict', us[0].id,
-        parentid=None, viewerids=[us[1].id], authparentids=[], authchildrenids=[]))
+        parentid=None, viewerids=[us[1].id], authparentids=[], authchildids=[]))
+    View.get(us[1].id, ss[0].id, False, None, True)
     # 1
     ss.append(Secret('talking in the library', 'hi ruby, what do you want?', us[1].id,
-        parentid=ss[0].id, viewerids=[], authparentids=[ss[0].id], authchildrenids=[]))
+        parentid=ss[0].id, viewerids=[], authparentids=[ss[0].id], authchildids=[]))
+    View.get(us[0].id, ss[1].id, False, None, True)
     # 2
     ss.append(Secret('confession', 'just wanted to tell you that I love honey', us[0].id,
-        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildrenids=[]))
+        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildids=[]))
+    View.get(us[1].id, ss[2].id, False, None, True)
     # 3
     ss.append(Secret('pretence', 'how nice of you!', us[1].id,
-        parentid=ss[2].id, viewerids=[], authparentids=[ss[2].id], authchildrenids=[]))
+        parentid=ss[2].id, viewerids=[], authparentids=[ss[2].id], authchildids=[]))
+    View.get(us[0].id, ss[3].id, False, None, True)
 
     # 4
     ss.append(Secret('betrayal', 'benedict rushes to bleys and schtinks', us[1].id,
-        parentid=ss[2].id, viewerids=[us[2].id], authparentids=[], authchildrenids=[ss[2].id]))
+        parentid=ss[2].id, viewerids=[us[2].id], authparentids=[], authchildids=[ss[2].id]))
+    View.get(us[2].id, ss[2].id, False, None, True)
+    View.get(us[2].id, ss[3].id, False, None, True)
+    View.get(us[2].id, ss[4].id, False, None, True)
 
     session.commit()
 

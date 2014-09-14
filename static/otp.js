@@ -1,7 +1,7 @@
 (function(){'use strict';
 
 // Helpers.
-var log = console.log;
+var log = window.log = console.log;
 function foreach(array, func, thisarg){
     if(thisarg) func = func.bind(thisarg);
     for(var idx = 0, len = array.length; idx < len; idx++){
@@ -17,51 +17,56 @@ function map(array, func, thisarg){
     return results;
 };
 
-// Index, sort and link the server injected secrets.
-function indexsecrets(rawsecrets){
-    var secrets = {viewedids: [], unviewedids: []};
-    foreach(rawsecrets, function(secret){
-        secrets[secret.id] = secret;
-        if(typeof secret.body === 'string') secrets.viewedids.push(secret.id);
-        else secrets.unviewedids.push(secret.id);
+// Link a secret to its relatives.
+function linksecret(secret, secrets){
+    var idlinker = map(
+        ['childid', 'authparentid', 'authchildid'],
+        function(key){
+            return map(secret[key + 's'], function(id){return secrets[id];});
+        }
+    );
+    secret.children = idlinker[0];
+    secret.authparents = idlinker[1];
+    secret.authchildren = idlinker[2];
+    if(typeof secret.parentid === 'number')
+        secret.parent = secrets[secret.parentid];
+    return [secret, secrets];
+}
 
-        if(secret.parentid) secret.parent = secrets[secret.parentid];
-        secret.children = map(secret.childids, function(childid){
-            return secrets[childid];
-        });
+// Recursively gather thread IDs from root and pool of secrets.
+function gatherchildren(secret){
+    var ids = [secret.id];
+    foreach(secret.children, function(child){
+        if(typeof child.body === 'undefined') return;
+        if(child.authparentids[0] !== secret.id) return;
+        // TODO test for personal viewers insertion.
+        ids = ids.concat(gatherchildren(child));
     });
-    return secrets
-}
-
-// Recursively gather IDs of viewed children with continuous auth.
-function withchildren(secret){
-    return [secret.id].concat(map(secret.children, function(child){
-        if(
-            typeof child.body === 'string' &&
-            child.viewers.every(function(_, secretid){
-                return secretid < secret.id;
-            })
-        ) return withchildren(child);
-    }));
-}
-
-// Organize secrets in threads.
-function threadsecrets(secrets){
-    var threads = [];
-    var ids = secrets.viewedids.slice();
-    while(ids.length > 0){
-        threads.push(withchildren(secrets[ids[0]]));
-        foreach(ids, function(id){
-            var pos = ids.indexOf(id);
-            if(pos > -1) ids.splice(pos, 1);
-        });
-    }
-    return threads;
+    return ids;
 }
 
 angular.module('otp', []).controller('secrets', function($scope){
-    $scope.secrets = indexsecrets(rawsecrets);
-    $scope.threads = threadsecrets($scope.secrets);
+
+    // Link all the server injected secrets.
+    for(var id in secrets){
+        linksecret(secrets[id], secrets);
+    }
+
+    // Seperate threads.
+    var ids = map(Object.keys(secrets), function(key){
+        return parseInt(key, 10);
+    }).sort(function(a, b){return a - b;});
+    var threadids;
+    while(ids.length > 0){
+        threadids = gatherchildren(secrets[ids[0]]);
+        foreach(threadids, function(id){
+            var pos = ids.indexOf(id);
+            if(pos > -1) ids.splice(pos, 1);
+        });
+        log(threadids);
+    }
+    window.s = $scope.secrets = secrets;
+    window.t = $scope.threads = threadsecrets($scope.secrets);
 
     $scope.nojsstyle = 'display: none';
 });
