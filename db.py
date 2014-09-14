@@ -150,24 +150,6 @@ class Secret(Base):
         secondaryjoin=id==Revelation.revealerid,
         backref='authchildren'
     )
-    publicauthparents = relationship(
-        'Secret',
-        secondary='revelations',
-        primaryjoin='''and_(
-            Secret.id == Revelation.revealedid,
-            Revelation.public == True
-        )''',
-        secondaryjoin=id==Revelation.revealerid
-    )
-    privateauthparents = relationship(
-        'Secret',
-        secondary='revelations',
-        primaryjoin='''and_(
-            Secret.id == Revelation.revealedid,
-            Revelation.public == False
-        )''',
-        secondaryjoin=id==Revelation.revealerid
-    )
 
     def __init__(
         self, name, body, authorid,
@@ -202,11 +184,11 @@ class Secret(Base):
         elif self in ignore: return []
         ignore.append(self)
         viewers = {self.id: self.personalviewers[:]}
-        for secret in self.publicauthparents:
-            viewers.update(secret.knownviewers(viewer, ignore))
-        for secret in self.privateauthparents:
-            if viewer in secret.viewers:
-                viewers.update(secret.knownviewers(viewer, ignore))
+        for secret in self.authparents:
+            if(
+                secret.id < self.id
+                or (secret.id > self.id and viewer in secret.viewers)
+            ): viewers.update(secret.knownviewers(viewer, ignore))
         return viewers
 
     @classmethod
@@ -235,6 +217,11 @@ if __name__ == '__main__':
     ss.append(Secret('ווידוי', 'אני אוהבת דבש', us[0].id, ss[0].id, [], [ss[0].id]))
     ss.append(Secret('בגידה', 'בנדיקט פותח טראמפ לבלייז ושולח לו מנטאלית: קבל את זה, אחי...', us[1].id, ss[1].id, [us[2].id], [], [ss[1].id]))
     ss.append(Secret('שאננות מעושה', 'באמת? את אוהבת דבש? גם אני...', us[1].id, ss[1].id, [], [ss[1].id]))
+
+    ss.append(Secret('1', '1...', us[1].id, ss[0].id, [], [ss[0].id]))
+    ss.append(Secret('2', '2...', us[1].id, ss[4].id, [], [ss[4].id]))
+    ss.append(Secret('3', '3...', us[1].id, ss[5].id, [], [ss[5].id]))
+    ss.append(Secret('4', '4...', us[1].id, ss[6].id, [], [ss[6].id]))
     session.commit()
 
     for u in us:
