@@ -50,7 +50,7 @@ class Viewer(Base, UserMixin):
         session.flush()
 
     def __repr__(self):
-        return 'u:' + self.name
+        return "u%i:%s" % (self.id, self.name)
 
     @classmethod
     def getbyid(cls, id):
@@ -112,11 +112,9 @@ class Revelation(Base):
     id = Column(Integer, primary_key=True)
     revealedid = Column(Integer, ForeignKey('secrets.id'))
     revealerid = Column(Integer, ForeignKey('secrets.id'))
-    public = Column(Boolean, default=False)
 
-    def __init__(self, revealed, revealer, public=None):
+    def __init__(self, revealed, revealer):
         self.revealedid, self.revealerid = revealed.id, revealer.id
-        if public is not None: self.public = public
         revealed.reveal(revealer.viewers)
 
     def __repr__(self):
@@ -165,13 +163,13 @@ class Secret(Base):
         for viewerid in viewerids:
             View.get(viewerid, self.id, True, True)
         for secretid in authparentids:
-            Revelation(self, Secret.getbyid(secretid), True)
+            Revelation(self, Secret.getbyid(secretid))
         for secretid in authchildrenids:
             Revelation(Secret.getbyid(secretid), self)
         session.commit()
 
     def __repr__(self):
-        return 's:' + self.name
+        return "s%i:%s" % (self.id, self.name)
 
     def reveal(self, viewers):
         for viewer in viewers:
@@ -179,16 +177,30 @@ class Secret(Base):
         for child in self.authchildren: child.reveal(viewers)
         session.flush()
 
-    def knownviewers(self, viewer, ignore=None):
-        if ignore is None: ignore = []
-        elif self in ignore: return []
-        ignore.append(self)
-        viewers = {self.id: self.personalviewers[:]}
-        for secret in self.authparents:
-            if(
-                secret.id < self.id
-                or (secret.id > self.id and viewer in secret.viewers)
-            ): viewers.update(secret.knownviewers(viewer, ignore))
+
+    def knownviewers(self, viewer, ignore=None, root=None):
+        viewers = {}
+        if ignore is None: ignore = [self]
+        else:
+            if self in ignore: return viewers
+            ignore.append(self)
+
+        if(View.get(viewer.id, self.id)):
+            if(len(self.personalviewers) > 1):
+                viewers[self.id] = self.personalviewers[:]
+        else:
+            try:
+                if root is None: root = ignore[-2]
+            except IndexError:
+                return viewers
+            if(len(self.personalviewers) > 1):
+                viewers[root.id] = self.personalviewers[:]
+
+        for authparent in self.authparents:
+            if (
+                (authparent.id < self.id) or
+                (authparent.id > self.id and viewer in authparent.viewers)
+            ): viewers.update(authparent.knownviewers(viewer, ignore, root))
         return viewers
 
     @classmethod
@@ -208,20 +220,28 @@ if __name__ == '__main__':
 
     Base.metadata.create_all(bind=engine)
     us = []
-    us.append(Viewer('רובי', '0'))
-    us.append(Viewer('בנדיקט', '1'))
-    us.append(Viewer('בלייז', '2'))
-    us.append(Viewer('תעוב', '3'))
+    us.append(Viewer('ruby', '0'))
+    us.append(Viewer('benedict', '1'))
+    us.append(Viewer('bleys', '2'))
+    us.append(Viewer('tauv', '3'))
     ss = []
-    ss.append(Secret('שיחה בספריה', 'שלום רובי', us[1].id, None, [us[0].id]))
-    ss.append(Secret('ווידוי', 'אני אוהבת דבש', us[0].id, ss[0].id, [], [ss[0].id]))
-    ss.append(Secret('בגידה', 'בנדיקט פותח טראמפ לבלייז ושולח לו מנטאלית: קבל את זה, אחי...', us[1].id, ss[1].id, [us[2].id], [], [ss[1].id]))
-    ss.append(Secret('שאננות מעושה', 'באמת? את אוהבת דבש? גם אני...', us[1].id, ss[1].id, [], [ss[1].id]))
+    # 0
+    ss.append(Secret('in the library', 'ruby is searching for benedict', us[0].id,
+        parentid=None, viewerids=[us[1].id], authparentids=[], authchildrenids=[]))
+    # 1
+    ss.append(Secret('talking in the library', 'hi ruby, what do you want?', us[1].id,
+        parentid=ss[0].id, viewerids=[], authparentids=[ss[0].id], authchildrenids=[]))
+    # 2
+    ss.append(Secret('confession', 'just wanted to tell you that I love honey', us[0].id,
+        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildrenids=[]))
+    # 3
+    ss.append(Secret('pretence', 'how nice of you!', us[1].id,
+        parentid=ss[2].id, viewerids=[], authparentids=[ss[2].id], authchildrenids=[]))
 
-    ss.append(Secret('1', '1...', us[1].id, ss[0].id, [], [ss[0].id]))
-    ss.append(Secret('2', '2...', us[1].id, ss[4].id, [], [ss[4].id]))
-    ss.append(Secret('3', '3...', us[1].id, ss[5].id, [], [ss[5].id]))
-    ss.append(Secret('4', '4...', us[1].id, ss[6].id, [], [ss[6].id]))
+    # 4
+    ss.append(Secret('betrayal', 'benedict rushes to bleys and schtinks', us[1].id,
+        parentid=ss[2].id, viewerids=[us[2].id], authparentids=[], authchildrenids=[ss[2].id]))
+
     session.commit()
 
     for u in us:
