@@ -178,29 +178,31 @@ class Secret(Base):
         session.flush()
 
 
-    def knownviewers(self, viewer, ignore=None, root=None):
+    def knownviewers(self, viewer, ignore=None, lastauth=None):
         viewers = {}
         if ignore is None: ignore = [self]
         else:
             if self in ignore: return viewers
             ignore.append(self)
 
-        if(View.get(viewer.id, self.id)):
-            if(len(self.personalviewers) > 1):
-                viewers[self.id] = self.personalviewers[:]
-        else:
-            try:
-                if root is None: root = ignore[-2]
-            except IndexError:
-                return viewers
-            if(len(self.personalviewers) > 1):
-                viewers[root.id] = self.personalviewers[:]
+        if View.get(viewer.id, self.id): lastauth = self
+        elif lastauth is None: return viewers
+
+        if(len(self.personalviewers) > 1):
+            viewers[lastauth.id] = set(self.personalviewers)
 
         for authparent in self.authparents:
             if (
                 (authparent.id < self.id) or
                 (authparent.id > self.id and viewer in authparent.viewers)
-            ): viewers.update(authparent.knownviewers(viewer, ignore, root))
+            ):
+                for secretid, viewerlist in authparent.knownviewers(
+                    viewer, ignore, lastauth
+                ).items():
+                    viewers[secretid] = (
+                        viewerlist.union(viewers[secretid])
+                        if secretid in viewers else viewerlist
+                    )
         return viewers
 
     @classmethod
@@ -235,7 +237,7 @@ if __name__ == '__main__':
     View.get(us[0].id, ss[1].id, False, None, True)
     # 2
     ss.append(Secret('confession', 'just wanted to tell you that I love honey', us[0].id,
-        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildids=[]))
+        parentid=ss[1].id, viewerids=[us[3].id], authparentids=[ss[1].id], authchildids=[]))
     View.get(us[1].id, ss[2].id, False, None, True)
     # 3
     ss.append(Secret('pretence', 'how nice of you!', us[1].id,
