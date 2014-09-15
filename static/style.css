@@ -7,43 +7,19 @@
     background: yellow;
     color: red;
 }
-#log{
-    background: yellow;
-    color: black;
+
+#threads{
+    width: 20%;
+    height: 100%;
+    overflow: scroll;
 }
+
 p.message{
     color: #335E79;
     padding: 1em;
     background: #CADEEB;
 }
 
-#threads, #secrets{
-    border: 1px solid white;
-    min-height: 10em;
-    width: 100%;
-}
-
-.unviewed{
-    background-color: yellow;
-}
-
-.error{
-    background-color: red;
-}
-
-div.composer > *{
-    width: 100%;
-    -webkit-box-sizing: border-box;
-    -moz-box-sizing: border-box;
-    box-sizing: border-box;
-    display: block;
-    clear: both;
-}
-
-div.viewers ul{
-    height: 5em;
-    width: 10em;
+span.secret{
     float: left;
-    overflow: auto;
-    border: 1px solid white;
 }

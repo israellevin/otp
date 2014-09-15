@@ -237,7 +237,7 @@ if __name__ == '__main__':
     View.get(us[0].id, ss[1].id, False, None, True)
     # 2
     ss.append(Secret('confession', 'just wanted to tell you that I love honey', us[0].id,
-        parentid=ss[1].id, viewerids=[us[3].id], authparentids=[ss[1].id], authchildids=[]))
+        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildids=[]))
     View.get(us[1].id, ss[2].id, False, None, True)
     # 3
     ss.append(Secret('pretence', 'how nice of you!', us[1].id,

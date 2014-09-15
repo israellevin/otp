@@ -4,8 +4,8 @@
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
 <script>
     var uid = {{current_user.id}};
-    var secrets = {{secrets|tojson}};
     var viewers = {{viewers|tojson}};
+    var rawsecrets = {{secrets|tojson}};
 </script>
 <script src="{{url_for('static', filename='angular.min.js')}}"></script>
 <script src="{{url_for('static', filename='otp.js')}}"></script>
@@ -25,15 +25,15 @@
     <div id=nojs style='{{nojsstyle}}'>
         You must have JavaScript turned off.
     </div>
-    <div class=thread data-ng-repeat='thread in threads'>
-        <span class=secret data-ng-repeat='secret in thread'>
-            <h1>{{secret.name}}</h1>
-            <p>{{secret.body}}</p>
-        </span>
+    <div id=threads>
+        <div class=thread data-ng-repeat='thread in threads'>
+            <h1>{{thread.name}}</h1>
+            <p data-ng-repeat='viewer in thread.viewers'>{{viewer}}</p>
+            <span class=secret data-ng-repeat='secret in thread.members'>
+                <h3>{{secret.name}}</h3>
+                <p>{{secret.body}}</p>
+            </span>
+        </div>
     </div>
 </div>
 {% endraw %}
-
-<div id=threads data-ng-controller=''></div>
-<div id=secrets></div>
-<p id=compose>compose</p>
