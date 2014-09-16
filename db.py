@@ -221,6 +221,8 @@ if __name__ == '__main__':
         remove(dbfilename)
 
     Base.metadata.create_all(bind=engine)
+
+    # FIXME Testing
     us = []
     us.append(Viewer('ruby', '0'))
     us.append(Viewer('benedict', '1'))

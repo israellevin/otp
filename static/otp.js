@@ -3,7 +3,7 @@ var log  = console.log;
 
 (function(){'use strict';
 
-// Iterators.
+// Helpers.
 function each(array, func, thisarg){
     if(thisarg) func = func.bind(thisarg);
     for(var idx = 0, len = array.length; idx < len; idx++){
@@ -18,18 +18,27 @@ function map(array, func, thisarg){
     }, thisarg);
     return results;
 }
-function eachkeyval(dictionary, func, thisarg){
+function keyval(dictionary, func, thisarg){
     // FIXME when I get online I should check if its safe.
     each(Object.keys(dictionary), function(key){
         return func(key, dictionary[key]);
     }, thisarg);
 }
+function copy(obj, extension){
+    var copy = obj.constructor();
+    for(var attr in obj){
+        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+    }
+    if(typeof extension === 'object') for(var attr in extension){
+        if (extension.hasOwnProperty(attr)) copy[attr] = extension[attr];
+    }
+    return copy;
+}
 
 // Link all the server injected secrets to their relatives.
-// Danger: this function modifies it's argument!
-// Should probably fix this later.
-function linksecrets(secrets){
-    eachkeyval(secrets, function(id, secret){
+function linksecrets(rawsecrets){
+    var secrets = copy(rawsecrets);
+    keyval(secrets, function(id, secret){
         var idlinker = map(
             ['childid', 'authparentid', 'authchildid'],
             function(key){
@@ -67,10 +76,14 @@ function Thread(members){
     this.memberids = map(members, function(member){return member.id;}).sort(
         function(a, b){return a.id - b.id;}
     );
+
+    this.viewed = this.members.every(function(member){
+        return typeof member.body === 'string';
+    });
     this.name = this.members[0].name;
 
     var viewers = []
-    eachkeyval(this.members[0].viewers, function(_, viewerids){
+    keyval(this.members[0].viewers, function(_, viewerids){
         each(viewerids, function(viewerid){
             if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
         });
@@ -84,12 +97,11 @@ angular.module('otp', []).controller('secrets', function($scope){
     var threads = window.t = []
 
     // Pull threads off checklist till we run out of unthreaded secrets.
-    var members, checklist = [];
-    eachkeyval(secrets, function(_, secret){
-        checklist.push(secret);
-    });
+    var members, checklist = map(Object.keys(secrets), function(key){
+        return parseInt(key, 10);
+    }).sort(function(a, b){return a - b;});
     while(checklist.length > 0){
-        members = threadsecrets(checklist[0]);
+        members = threadsecrets(secrets[checklist[0]]);
         if(members.length === 0){
             // TODO handle unviewed.
             checklist.shift();
@@ -97,8 +109,8 @@ angular.module('otp', []).controller('secrets', function($scope){
         }
         threads.unshift(new Thread(members));
 
-        each(members, function(id){
-            var pos = checklist.indexOf(id);
+        each(members, function(member){
+            var pos = checklist.indexOf(member.id);
             if(pos > -1) checklist.splice(pos, 1);
         });
     }

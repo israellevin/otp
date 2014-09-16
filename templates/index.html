@@ -21,19 +21,21 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=secrets>
+<div data-ng-app=otp data-ng-controller=secrets ng-init='data.activethread = null'>
     <div id=nojs style='{{nojsstyle}}'>
         You must have JavaScript turned off.
     </div>
     <div id=threads>
-        <div class=thread data-ng-repeat='thread in threads'>
+        <div class=thread data-ng-repeat='thread in threads' data-ng-click='data.activethread = thread'>
             <h1>{{thread.name}}</h1>
             <p data-ng-repeat='viewer in thread.viewers'>{{viewer}}</p>
-            <span class=secret data-ng-repeat='secret in thread.members'>
-                <h3>{{secret.name}}</h3>
-                <p>{{secret.body}}</p>
-            </span>
         </div>
+    </div>
+    <div id=secrets>
+        <span class=secret data-ng-repeat='secret in data.activethread.members'>
+            <h3>{{secret.name}}</h3>
+            <p>{{secret.body}}</p>
+        </span>
     </div>
 </div>
 {% endraw %}
