@@ -32,10 +32,9 @@
         </div>
     </div>
     <div id=secrets>
-        <span class=secret data-ng-repeat='secret in data.activethread.members'>
-            <h3>{{secret.name}}</h3>
-            <p>{{secret.body}}</p>
-        </span>
+        <div class=secret data-ng-repeat='secret in data.activethread.members'>
+            {{secret.body}}
+        </div>
     </div>
 </div>
 {% endraw %}

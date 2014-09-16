@@ -73,14 +73,16 @@ function threadsecrets(secret){
 // Create a thread object from a list of members.
 function Thread(members){
     this.members = members;
-    this.memberids = map(members, function(member){return member.id;}).sort(
-        function(a, b){return a.id - b.id;}
-    );
 
     this.viewed = this.members.every(function(member){
         return typeof member.body === 'string';
     });
-    this.name = this.members[0].name;
+
+    try{
+        this.name = this.members[0].body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+    }catch(e if e instanceof TypeError){
+        this.name = this.members[0].body.slice(0,20);
+    }
 
     var viewers = []
     keyval(this.members[0].viewers, function(_, viewerids){

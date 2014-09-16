@@ -59,7 +59,6 @@ def jsonablesecret(view):
     secret = view.secret
     jsonable = {
         'id': secret.id,
-        'name': secret.name,
         'time': secret.time,
         'authorid': secret.authorid,
         'parentid': secret.parentid,
@@ -110,7 +109,6 @@ def postsecret():
     return {
         'posttime':
             db.Secret(
-                request.args.get('name'),
                 request.args.get('body'),
                 current_user.id,
                 request.args.get('parentid'),
