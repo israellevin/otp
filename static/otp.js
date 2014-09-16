@@ -3,7 +3,7 @@ var log  = console.log;
 
 (function(){'use strict';
 
-// Helpers.
+// Iterators.
 function each(array, func, thisarg){
     if(thisarg) func = func.bind(thisarg);
     for(var idx = 0, len = array.length; idx < len; idx++){
@@ -18,12 +18,13 @@ function map(array, func, thisarg){
     }, thisarg);
     return results;
 }
-function keyval(dictionary, func, thisarg){
-    // FIXME when I get online I should check if its safe.
+function eachval(dictionary, func, thisarg){
     each(Object.keys(dictionary), function(key){
-        return func(key, dictionary[key]);
+        return func(dictionary[key]);
     }, thisarg);
 }
+
+// Helpers.
 function copy(obj, extension){
     var copy = obj.constructor();
     for(var attr in obj){
@@ -36,9 +37,12 @@ function copy(obj, extension){
 }
 
 // Link all the server injected secrets to their relatives.
-function linksecrets(rawsecrets){
+function linksecrets(rawsecrets, viewers){
     var secrets = copy(rawsecrets);
-    keyval(secrets, function(id, secret){
+    eachval(secrets, function(secret){
+        if(typeof secret.parentid === 'number')
+            secret.parent = secrets[secret.parentid];
+
         var idlinker = map(
             ['childid', 'authparentid', 'authchildid'],
             function(key){
@@ -48,9 +52,15 @@ function linksecrets(rawsecrets){
         secret.children = idlinker[0];
         secret.authparents = idlinker[1];
         secret.authchildren = idlinker[2];
-        if(typeof secret.parentid === 'number')
-            secret.parent = secrets[secret.parentid];
+
+        secret.author = viewers[secret.authorid];
+        each(Object.keys(secret.viewers), function(key){
+            secret.viewers[key] = map(secret.viewers[key], function(id){
+                return viewers[id];
+            });
+        });
     });
+
     return secrets;
 }
 
@@ -85,7 +95,7 @@ function Thread(members){
     }
 
     var viewers = []
-    keyval(this.members[0].viewers, function(_, viewerids){
+    eachval(this.members[0].viewers, function(viewerids){
         each(viewerids, function(viewerid){
             if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
         });
@@ -95,7 +105,8 @@ function Thread(members){
 
 angular.module('otp', []).controller('secrets', function($scope){
 
-    var secrets = window.s = linksecrets(rawsecrets);
+    // Both rawsecrets and rawviewers are injected to window by flask.
+    var secrets = window.s = linksecrets(rawsecrets, rawviewers);
     var threads = window.t = []
 
     // Pull threads off checklist till we run out of unthreaded secrets.
@@ -119,7 +130,6 @@ angular.module('otp', []).controller('secrets', function($scope){
 
     $scope.secrets = secrets;
     $scope.threads = threads;
-    $scope.viewers = viewers;
 
     $scope.nojsstyle = 'display: none';
 });
