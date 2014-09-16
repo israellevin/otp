@@ -102,10 +102,14 @@ angular.module('otp', []).controller('secrets', function($scope){
             if(pos > -1) checklist.splice(pos, 1);
         });
     }
+    
 
     $scope.secrets = secrets;
     $scope.threads = threads;
 
+    /*$scope.showThreadSecrets(thread){
+        log(thread);
+    }*/
     $scope.nojsstyle = 'display: none';
 });
 

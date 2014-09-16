@@ -8,11 +8,7 @@
     color: red;
 }
 
-#threads{
-    width: 20%;
-    height: 100%;
-    overflow: scroll;
-}
+
 
 p.message{
     color: #335E79;
