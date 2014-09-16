@@ -55,7 +55,7 @@ def login():
     except AttributeError: flash('Bad login')
     return redirect(request.args.get('next', url_for('index')))
 
-def jsonablesecret(view):
+def jsonable(view):
     secret = view.secret
     jsonable = {
         'id': secret.id,
@@ -76,9 +76,18 @@ def jsonablesecret(view):
 @app.route('/')
 @login_required
 def index():
-    return render_template('index.html', viewers=db.Viewer.getall(), secrets={
-        view.secretid: jsonablesecret(view) for view in current_user.views
-    })
+    return render_template('index.html',
+            viewers={
+                viewer.id: {
+                    'id': viewer[0],
+                    'name': viewer[1],
+                    'lastseen': viewer[2]
+                } for viewer in db.Viewer.getall()
+            },
+            secrets={
+                view.secretid: jsonable(view) for view in current_user.views
+            }
+    )
 
 from functools import wraps
 def jsonp(f):
@@ -100,7 +109,7 @@ def jsonp(f):
 def getsecret():
     view = db.View.get(current_user.id, request.args['id'], False, False, True)
     if not view: return {'error': 'unauthorized'}
-    return jsonablesecret(view)
+    return jsonable(view)
 
 @app.route('/post', methods=['GET', 'POST'])
 @login_required

@@ -119,6 +119,7 @@ angular.module('otp', []).controller('secrets', function($scope){
 
     $scope.secrets = secrets;
     $scope.threads = threads;
+    $scope.viewers = viewers;
 
     $scope.nojsstyle = 'display: none';
 });

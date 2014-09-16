@@ -28,12 +28,12 @@
     <div id=threads>
         <div class=thread data-ng-repeat='thread in threads' data-ng-click='data.activethread = thread'>
             <h1>{{thread.name}}</h1>
-            <p data-ng-repeat='viewer in thread.viewers'>{{viewer}}</p>
+            <p data-ng-repeat='viewer in thread.viewers'>{{viewers[viewer].name}}</p>
         </div>
     </div>
     <div id=secrets>
         <div class=secret data-ng-repeat='secret in data.activethread.members'>
-            {{secret.body}}
+            {{viewers[secret.authorid].name}}: {{secret.body}}
         </div>
     </div>
 </div>
