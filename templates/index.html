@@ -22,7 +22,7 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=secrets>
+<div data-ng-app=otp data-ng-controller=secrets data-ng-init='data.currentThread=null'>
     <div id=nojs style='{{nojsstyle}}'>
         You must have JavaScript turned off.
     </div>
@@ -31,7 +31,7 @@
     <div id=threads class='col-md-2'>
         <h3>Threads</h3>
         <div data-ng-repeat='thread in threads'>
-            <h4 ng-click=''>{{thread.name}}</h4>
+            <h4 data-ng-click='data.currentThread=thread'>{{thread.name}}</h4>
 
             <!--p data-ng-repeat='viewer in thread.viewers'>{{viewer}}</p>
             <span class=secret data-ng-repeat='secret in thread.members'>
@@ -44,7 +44,7 @@
     <div id=secrets class='col-md-10'>
         <h3>Secrets</h3>
         
-            <div class=thread data-ng-repeat='secret in secrets '>
+            <div class=thread data-ng-repeat='secret in data.currentThread.members'>
                 <h4>{{secret.authorid}}:</h4>
                 <span data-ng-repeat='viewer in secret.viewers'>{{viewer}}</span>
                 <p>{{secret.body}}</p>
