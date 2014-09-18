@@ -5,7 +5,7 @@
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='bootstrap.css')}}">
 <script>
     var uid = {{current_user.id}};
-    var viewers = {{viewers|tojson}};
+    var rawviewers = {{viewers|tojson}};
     var rawsecrets = {{secrets|tojson}};
 </script>
 <script src="{{url_for('static', filename='angular.min.js')}}"></script>
@@ -38,9 +38,23 @@
                 <h3>{{secret.name}}</h3>
                 <p>{{secret.body}}</p>
             </span-->
+=======
+<div data-ng-app=otp data-ng-controller=secrets ng-init='data.activethread = null'>
+    <div id=nojs style='{{nojsstyle}}'>
+        You must have JavaScript turned off.
+    </div>
+    <div id=threads>
+        <div class=thread data-ng-repeat='thread in threads' data-ng-click='data.activethread = thread'>
+            <h1>{{thread.name}}</h1>
+            <p data-ng-repeat='viewer in thread.viewers'>{{viewer.name}}</p>
         </div>
     </div>
-
+    <div id=secrets>
+        <div class=secret data-ng-repeat='secret in data.activethread.members'>
+            {{secret.author.name}}: {{secret.body}}
+        </div>
+    </div>
+=======
     <div id=secrets class='col-md-10'>
         <h3>Secrets</h3>
         

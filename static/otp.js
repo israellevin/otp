@@ -18,18 +18,31 @@ function map(array, func, thisarg){
     }, thisarg);
     return results;
 }
-function eachkeyval(dictionary, func, thisarg){
-    // FIXME when I get online I should check if its safe.
+function eachval(dictionary, func, thisarg){
     each(Object.keys(dictionary), function(key){
-        return func(key, dictionary[key]);
+        return func(dictionary[key]);
     }, thisarg);
 }
 
+// Helpers.
+function copy(obj, extension){
+    var copy = obj.constructor();
+    for(var attr in obj){
+        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
+    }
+    if(typeof extension === 'object') for(var attr in extension){
+        if (extension.hasOwnProperty(attr)) copy[attr] = extension[attr];
+    }
+    return copy;
+}
+
 // Link all the server injected secrets to their relatives.
-// Danger: this function modifies it's argument!
-// Should probably fix this later.
-function linksecrets(secrets){
-    eachkeyval(secrets, function(id, secret){
+function linksecrets(rawsecrets, viewers){
+    var secrets = copy(rawsecrets);
+    eachval(secrets, function(secret){
+        if(typeof secret.parentid === 'number')
+            secret.parent = secrets[secret.parentid];
+
         var idlinker = map(
             ['childid', 'authparentid', 'authchildid'],
             function(key){
@@ -39,9 +52,15 @@ function linksecrets(secrets){
         secret.children = idlinker[0];
         secret.authparents = idlinker[1];
         secret.authchildren = idlinker[2];
-        if(typeof secret.parentid === 'number')
-            secret.parent = secrets[secret.parentid];
+
+        secret.author = viewers[secret.authorid];
+        each(Object.keys(secret.viewers), function(key){
+            secret.viewers[key] = map(secret.viewers[key], function(id){
+                return viewers[id];
+            });
+        });
     });
+
     return secrets;
 }
 
@@ -64,13 +83,19 @@ function threadsecrets(secret){
 // Create a thread object from a list of members.
 function Thread(members){
     this.members = members;
-    this.memberids = map(members, function(member){return member.id;}).sort(
-        function(a, b){return a.id - b.id;}
-    );
-    this.name = this.members[0].name;
+
+    this.viewed = this.members.every(function(member){
+        return typeof member.body === 'string';
+    });
+
+    try{
+        this.name = this.members[0].body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+    }catch(e if e instanceof TypeError){
+        this.name = this.members[0].body.slice(0,20);
+    }
 
     var viewers = []
-    eachkeyval(this.members[0].viewers, function(_, viewerids){
+    eachval(this.members[0].viewers, function(viewerids){
         each(viewerids, function(viewerid){
             if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
         });
@@ -80,16 +105,16 @@ function Thread(members){
 
 angular.module('otp', []).controller('secrets', function($scope){
 
-    var secrets = window.s = linksecrets(rawsecrets);
+    // Both rawsecrets and rawviewers are injected to window by flask.
+    var secrets = window.s = linksecrets(rawsecrets, rawviewers);
     var threads = window.t = []
 
     // Pull threads off checklist till we run out of unthreaded secrets.
-    var members, checklist = [];
-    eachkeyval(secrets, function(_, secret){
-        checklist.push(secret);
-    });
+    var members, checklist = map(Object.keys(secrets), function(key){
+        return parseInt(key, 10);
+    }).sort(function(a, b){return a - b;});
     while(checklist.length > 0){
-        members = threadsecrets(checklist[0]);
+        members = threadsecrets(secrets[checklist[0]]);
         if(members.length === 0){
             // TODO handle unviewed.
             checklist.shift();
@@ -97,8 +122,8 @@ angular.module('otp', []).controller('secrets', function($scope){
         }
         threads.unshift(new Thread(members));
 
-        each(members, function(id){
-            var pos = checklist.indexOf(id);
+        each(members, function(member){
+            var pos = checklist.indexOf(member.id);
             if(pos > -1) checklist.splice(pos, 1);
         });
     }

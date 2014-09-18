@@ -87,7 +87,7 @@ class View(Base):
         session.flush()
 
     def __repr__(self):
-        return "v:%s->%s" % (self.viewer.name, self.secret.name)
+        return "v:%s->%i" % (self.viewer.name, self.secret.id)
 
     @classmethod
     def get(cls, viewerid, secretid, create=None, personal=None, viewed=None):
@@ -118,13 +118,12 @@ class Revelation(Base):
         revealed.reveal(revealer.viewers)
 
     def __repr__(self):
-        return "r:%s->%s" % (self.revealer.name, self.revealed.name)
+        return "r:%i->%i" % (self.revealer.id, self.revealed.id)
 
 class Secret(Base):
     __tablename__ = 'secrets'
     id = Column(Integer, primary_key=True)
     time = Column(DateTime)
-    name = Column(String(256))
     body = Column(UnicodeText)
 
     authorid = Column(Integer, ForeignKey('viewers.id'))
@@ -150,12 +149,11 @@ class Secret(Base):
     )
 
     def __init__(
-        self, name, body, authorid,
+        self, body, authorid,
         parentid=None, viewerids=[], authparentids=[], authchildids=[]
     ):
         self.time = datetime.now()
-        self.name, self.body = name, body
-        self.authorid = authorid
+        self.body, self.authorid = body, authorid
         if parentid is not None: self.parentid = parentid
         session.flush()
 
@@ -169,7 +167,7 @@ class Secret(Base):
         session.commit()
 
     def __repr__(self):
-        return "s%i:%s" % (self.id, self.name)
+        return "s%i:%s" % (self.id, self.body[:20])
 
     def reveal(self, viewers):
         for viewer in viewers:
@@ -221,6 +219,8 @@ if __name__ == '__main__':
         remove(dbfilename)
 
     Base.metadata.create_all(bind=engine)
+
+    # FIXME Testing
     us = []
     us.append(Viewer('ruby', '0'))
     us.append(Viewer('benedict', '1'))
@@ -228,25 +228,25 @@ if __name__ == '__main__':
     us.append(Viewer('tauv', '3'))
     ss = []
     # 0
-    ss.append(Secret('in the library', 'ruby is searching for benedict', us[0].id,
-        parentid=None, viewerids=[us[1].id], authparentids=[], authchildids=[]))
+    ss.append(Secret('ruby is searching for benedict', us[0].id, parentid=None,
+        viewerids=[us[1].id], authparentids=[], authchildids=[]))
     View.get(us[1].id, ss[0].id, False, None, True)
     # 1
-    ss.append(Secret('talking in the library', 'hi ruby, what do you want?', us[1].id,
-        parentid=ss[0].id, viewerids=[], authparentids=[ss[0].id], authchildids=[]))
+    ss.append(Secret('hi ruby, what do you want?', us[1].id, parentid=ss[0].id,
+        viewerids=[], authparentids=[ss[0].id], authchildids=[]))
     View.get(us[0].id, ss[1].id, False, None, True)
     # 2
-    ss.append(Secret('confession', 'just wanted to tell you that I love honey', us[0].id,
-        parentid=ss[1].id, viewerids=[], authparentids=[ss[1].id], authchildids=[]))
+    ss.append(Secret('just wanted to tell you that I love honey', us[0].id, parentid=ss[1].id,
+        viewerids=[], authparentids=[ss[1].id], authchildids=[]))
     View.get(us[1].id, ss[2].id, False, None, True)
     # 3
-    ss.append(Secret('pretence', 'how nice of you!', us[1].id,
-        parentid=ss[2].id, viewerids=[], authparentids=[ss[2].id], authchildids=[]))
+    ss.append(Secret('how nice of you!', us[1].id, parentid=ss[2].id,
+        viewerids=[], authparentids=[ss[2].id], authchildids=[]))
     View.get(us[0].id, ss[3].id, False, None, True)
 
     # 4
-    ss.append(Secret('betrayal', 'benedict rushes to bleys and schtinks', us[1].id,
-        parentid=ss[2].id, viewerids=[us[2].id], authparentids=[], authchildids=[ss[2].id]))
+    ss.append(Secret('benedict rushes to bleys and schtinks', us[1].id, parentid=ss[2].id,
+        viewerids=[us[2].id], authparentids=[], authchildids=[ss[2].id]))
     View.get(us[2].id, ss[2].id, False, None, True)
     View.get(us[2].id, ss[3].id, False, None, True)
     View.get(us[2].id, ss[4].id, False, None, True)
