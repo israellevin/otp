@@ -21,20 +21,35 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=secrets ng-init='data.activethread = null'>
-    <div id=nojs style='{{nojsstyle}}'>
+<div data-ng-app=otp data-ng-controller=secrets ng-init="data.activethread = null">
+    <div id=nojs style="{{nojsstyle}}">
         You must have JavaScript turned off.
     </div>
     <div id=threads>
-        <div class=thread data-ng-repeat='thread in threads' data-ng-click='data.activethread = thread'>
+        <div class=thread data-ng-repeat="thread in threads" data-ng-click="data.activethread = thread">
             <h1>{{thread.name}}</h1>
-            <p data-ng-repeat='viewer in thread.viewers'>{{viewer.name}}</p>
+            <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
         </div>
     </div>
     <div id=secrets>
-        <div class=secret data-ng-repeat='secret in data.activethread.members'>
+        <div class=secret data-ng-repeat="secret in data.activethread.members">
             {{secret.author.name}}: {{secret.body}}
         </div>
+    </div>
+    <div id=compose data-ng-controller=composer>
+        parentid:
+        <input type=text data-ng-model=parentid>
+        add authparentid:
+        <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
+        <ul><li data-ng-repeat="authparentid in authparents">{{authparentid}}</li></ul>
+        add authchildid:
+        <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
+        <ul><li data-ng-repeat="authchildid in authchildren">{{authchildid}}</li></ul>
+        add viewer:
+        <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
+        <ul><li data-ng-repeat="viewerid in viewers">{{viewerid}}</li></ul>
+        <textarea data-ng-model=body></textarea>
+        <input type=submit data-ng-click="post()">
     </div>
 </div>
 {% endraw %}

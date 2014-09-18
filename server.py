@@ -38,22 +38,23 @@ loginmanager.login_view = 'login'
 def load_user(userid):
     return db.Viewer.getbyid(userid)
 
+# FIXME Once wefinish debuging, this should only work with POST.
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     logout_user()
     session.clear()
-    if not 'passphrase' in request.args:
+    if not 'passphrase' in request.values:
         return render_template('login.html')
-    if 'name' in request.args:
-        user = db.Viewer(request.args['name'], request.args['passphrase'])
+    if 'name' in request.values:
+        user = db.Viewer(request.values['name'], request.values['passphrase'])
     else:
-        user = db.Viewer.getbypass(request.args['passphrase'])
+        user = db.Viewer.getbypass(request.values['passphrase'])
     if user is None:
         flash('New user')
         return render_template('login.html')
     try: login_user(user)
     except AttributeError: flash('Bad login')
-    return redirect(request.args.get('next', url_for('index')))
+    return redirect(request.values.get('next', url_for('index')))
 
 def jsonable(view):
     secret = view.secret
@@ -107,7 +108,7 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecret():
-    view = db.View.get(current_user.id, request.args['id'], False, False, True)
+    view = db.View.get(current_user.id, request.values['id'], False, False, True)
     if not view: return {'error': 'unauthorized'}
     return jsonable(view)
 
@@ -118,12 +119,12 @@ def postsecret():
     return {
         'posttime':
             db.Secret(
-                request.args.get('body'),
+                request.values.get('body'),
                 current_user.id,
-                request.args.get('parentid'),
-                request.args.getlist('viewerids[]'),
-                request.args.getlist('authparentids[]'),
-                request.args.getlist('authchildids[]')
+                request.values.get('parentid'),
+                request.values.getlist('viewerids[]'),
+                request.values.getlist('authparentids[]'),
+                request.values.getlist('authchildids[]')
             ).time
     }
 
