@@ -70,7 +70,7 @@ function threadsecrets(secret){
     var members = [secret];
     each(secret.children, function(child){
         if(
-            child.authparentids[0] !== secret.id || (
+            child.authparentids[0] !== secret.id || child.authparentids.length > 1 || (
                 child.viewers[child.id] &&
                 Object.keys(child.viewers[child.id]).length > 1
             )
@@ -103,6 +103,7 @@ function Thread(members){
     this.viewers = viewers;
 }
 
+// Work that angulaJS magic.
 angular.module('otp', []).controller('secrets', function($scope){
 
     // Both rawsecrets and rawviewers are injected to window by flask.
@@ -136,6 +137,41 @@ angular.module('otp', []).controller('secrets', function($scope){
         log(thread);
     }*/
     $scope.nojsstyle = 'display: none';
+}).controller('composer', function($scope, $http){
+
+    $scope.authparents = [];
+    $scope.addauthparent = function(){
+        $scope.authparents.push($scope.authparentid);
+    };
+
+    $scope.authchildren = [];
+    $scope.addauthchild = function(){
+        $scope.authchildren.push($scope.authchildid);
+    };
+
+    $scope.viewers = [];
+    $scope.addviewer = function(){
+        $scope.viewers.push($scope.viewerid);
+    };
+
+    $scope.post = function(){
+        $http({
+            url: 'post',
+            method: 'post',
+            params: {
+                body: $scope.body,
+                parentid: $scope.parentid,
+                'authparentids[]': $scope.authparents,
+                'authchildids[]': $scope.authchildren,
+                'viewerids[]': $scope.viewers
+
+            }
+        }).success(function(data){
+            console.log('gotit', arguments);
+        }).error(function(data){
+            console.log('error 666:', arguments);
+        });
+    };
 });
 
 }());
