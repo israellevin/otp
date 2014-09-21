@@ -189,8 +189,7 @@ class Secret(Base):
         if View.get(viewer.id, self.id): lastauth = self
         elif lastauth is None: return viewers
 
-        if(len(self.personalviewers) > 1):
-            viewers[lastauth.id] = set(self.personalviewers)
+        viewers[lastauth.id] = set(self.personalviewers)
 
         for authparent in self.authparents:
             if (

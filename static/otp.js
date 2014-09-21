@@ -71,7 +71,10 @@ function SortDict(){
 angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
-    var viewers = copy($window.rawviewers);
+    var viewers = {};
+    each($window.rawviewers, function(rawviewer){
+        viewers[rawviewer.id] = rawviewer;
+    });
     var me = viewers[$window.uid];
 
     this.index = new SortDict();
