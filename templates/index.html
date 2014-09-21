@@ -21,7 +21,7 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=secrets ng-init="data.activethread = null">
+<div data-ng-app=otp data-ng-controller=threads ng-init="data.activethread = null">
     <div id=nojs style="{{nojsstyle}}">
         You must have JavaScript turned off.
     </div>
@@ -41,7 +41,7 @@
         <input type=text data-ng-model=parentid>
         add authparentid:
         <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
-        <ul><li data-ng-repeat="authparentid in authparents">{{authparentid}}</li></ul>
+        <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
         add authchildid:
         <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
         <ul><li data-ng-repeat="authchildid in authchildren">{{authchildid}}</li></ul>

@@ -64,8 +64,6 @@ def jsonable(view):
         'authorid': secret.authorid,
         'parentid': secret.parentid,
         'childids': [child.id for child in secret.children],
-        'authparentids': [authparent.id for authparent in secret.authparents],
-        'authchildids': [authchild.id for authchild in secret.authchildren],
         'viewers': {
             group: [viewer.id for viewer in viewers]
             for group, viewers in secret.knownviewers(current_user).items()
@@ -78,16 +76,8 @@ def jsonable(view):
 @login_required
 def index():
     return render_template('index.html',
-            viewers={
-                viewer.id: {
-                    'id': viewer[0],
-                    'name': viewer[1],
-                    'lastseen': viewer[2]
-                } for viewer in db.Viewer.getall()
-            },
-            secrets={
-                view.secretid: jsonable(view) for view in current_user.views
-            }
+            viewers=db.Viewer.getall(),
+            secrets=[jsonable(view) for view in current_user.views]
     )
 
 from functools import wraps

@@ -68,7 +68,10 @@ class Viewer(Base, UserMixin):
 
     @classmethod
     def getall(cls):
-        try: return session.query(cls.id, cls.name, cls.lastseen).all()
+        try: return [
+            {'id': viewer[0], 'name': viewer[1], 'lastseen': viewer[2]}
+            for viewer in session.query(cls.id, cls.name, cls.lastseen).all()
+        ]
         except exc.SQLAlchemyError: return None
 
 class View(Base):
@@ -104,7 +107,7 @@ class View(Base):
         if personal is not None: view.personal = personal
         if type(viewed) is datetime: view.viewed = viewed
         elif viewed is not None: view.viewed = datetime.now()
-        if None not in (personal, viewed): session.flush()
+        if None not in (personal, viewed): session.commit()
         return view
 
 class Revelation(Base):
@@ -243,14 +246,12 @@ if __name__ == '__main__':
     ss.append(Secret('how nice of you!', us[2].id, parentid=ss[2].id,
         viewerids=[], authparentids=[ss[2].id], authchildids=[]))
     View.get(us[1].id, ss[3].id, False, None, True)
-
     # 4
     ss.append(Secret('benedict rushes to bleys and schtinks', us[2].id, parentid=ss[2].id,
         viewerids=[us[3].id], authparentids=[], authchildids=[ss[2].id]))
     View.get(us[3].id, ss[2].id, False, None, True)
     View.get(us[3].id, ss[3].id, False, None, True)
     View.get(us[3].id, ss[4].id, False, None, True)
-
     # 5
     ss.append(Secret('ruby rushes to bleys and schtinks', us[1].id, parentid=ss[2].id,
         viewerids=[us[3].id], authparentids=[], authchildids=[ss[2].id]))
@@ -258,6 +259,15 @@ if __name__ == '__main__':
     View.get(us[2].id, ss[5].id, False, None, True)
     View.get(us[3].id, ss[5].id, False, None, True)
     View.get(us[4].id, ss[5].id, False, None, True)
+
+    ss.append(Secret('rubys unread', us[2].id, None,
+        viewerids=[us[1].id], authparentids=[], authchildids=[]))
+    ss.append(Secret('rubys unread', us[2].id, None,
+        viewerids=[us[1].id], authparentids=[], authchildids=[]))
+    ss.append(Secret('rubys unread', us[2].id, None,
+        viewerids=[us[1].id], authparentids=[], authchildids=[]))
+    ss.append(Secret('rubys unread', us[2].id, None,
+        viewerids=[us[1].id], authparentids=[], authchildids=[]))
 
     session.commit()
 
