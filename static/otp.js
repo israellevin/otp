@@ -173,15 +173,11 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
             });
         }else unviewed.unshift(root);
     }
-    
 
     $scope.secrets = window.s = secrets;
     $scope.threads = window.t = threads;
     $scope.unviewed = window.u = unviewed;
 
-    /*$scope.showThreadSecrets(thread){
-        log(thread);
-    }*/
     $scope.nojsstyle = 'display: none';
 }]).controller('composer', ['$scope', '$http', function($scope, $http){
 
