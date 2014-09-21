@@ -124,6 +124,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
 
+// A controller for composing secrets.
     // Recursively gather a thread of secrets from a root secret.
     // TODO Should this not be a SortDict as well?
     function threadsecrets(secret){
@@ -180,7 +181,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $scope.nojsstyle = 'display: none';
 }]).controller('composer', ['$scope', '$http', function($scope, $http){
 
-    // TODO directivise this shit.
+    // TODO directivise this shit. Or maybe just let G do it properly.
     $scope.authparents = [];
     $scope.addauthparent = function(){
         $scope.authparents.push($scope.authparentid);

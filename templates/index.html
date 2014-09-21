@@ -44,10 +44,10 @@
         <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
         add authchildid:
         <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
-        <ul><li data-ng-repeat="authchildid in authchildren">{{authchildid}}</li></ul>
+        <ul><li data-ng-repeat="authchildid in authchildren" data-ng-click="authchildren.splice(this.$index, 1)">{{authchildid}}</li></ul>
         add viewer:
         <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
-        <ul><li data-ng-repeat="viewerid in viewers">{{viewerid}}</li></ul>
+        <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)">{{viewerid}}</li></ul>
         <textarea data-ng-model=body></textarea>
         <input type=submit data-ng-click="post()">
     </div>
