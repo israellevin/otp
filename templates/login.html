@@ -2,19 +2,30 @@
 <title>OTP - The One True Page</title>
 <meta charset=utf-8>
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+<script>
+	function validateForm(){
+		if(document.forms[0][1].value===document.forms[0][2].value) return true;
+		return false;
+	}
+
+</script>
+<img class='mp-logo' src='static/img/logo.svg' alt='logo'>
+<div class=moto>THE ONE TRUE PAGE</div>
 <div class=messages>
     {% for message in get_flashed_messages() %}
-    <p class=message>{{message}}
+    <div class='message login-message new-message'>{{message}}</div>
     {% endfor %}
 </div>
-<form>
+<form onsubmit="return validateForm()">
 {% if request.args['passphrase'] %}
-    <input name=name autofocus>
-    <input name=passphrase type=password>
-    <input name=prevpassphrase type=hidden value="{{request.args['passphrase']}}">
+	<input name=name placeholder=Name autofocus>
+	<input name=prevpassphrase type=password value="{{request.args['passphrase']}}" disabled>
+    <input name=passphrase type=password placeholder='Repeat Passphrase'>
     <input type=submit>
 {% else %}
-    <input name=passphrase autofocus>
+	<div class='message login-message new-message'>Wellcome</div>
+    <input name=passphrase type=password placeholder=Passphrase autofocus>
 {% endif %}
     <input name=next type=hidden value="{{request.args['next']}}">
 </form>
+

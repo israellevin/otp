@@ -38,6 +38,7 @@ function copy(obj, extension){
 
 // Link all the server injected secrets to their relatives.
 function linksecrets(rawsecrets, viewers){
+    log(rawsecrets,viewers);
     var secrets = copy(rawsecrets);
     eachval(secrets, function(secret){
         if(typeof secret.parentid === 'number')
