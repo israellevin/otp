@@ -125,4 +125,6 @@ def postsecret():
     }
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    from sys import argv
+    try: app.run(host='0.0.0.0', port=int(argv[1]))
+    except: app.run(host='0.0.0.0')
