@@ -104,7 +104,7 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecret():
-    view = db.View.get(current_user.id, request.values['id'], False, False, True)
+    view = db.View.get(current_user.id, request.values['id'], None, True)
     if not view: return {'error': 'unauthorized'}
     return jsonable(view)
 

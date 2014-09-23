@@ -42,6 +42,7 @@ function SortDict(){
     this.dict = {};
 
     this.get = function(id){return this.dict[id];};
+    this.getbypos = function(pos){return this.dict[this.keys[pos]];};
     this.remove = function(id){
         var pos = this.keys.indexOf(id);
         if(pos === -1) return false;
@@ -65,6 +66,13 @@ function SortDict(){
     };
 
     this.getor = function(id){return this.get(id) || this.add(id, {});};
+
+    this.each = function(callback, thisarg){
+        if(thisarg) callback = callback.bind(thisarg);
+        each(this.keys, function(key){
+            return callback(this.get(key), key);
+        }, this);
+    };
 }
 
 // A secrets service to enhance and serve the server injected secrets.
@@ -127,34 +135,34 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
 
-// A controller for composing secrets.
     // Recursively gather a thread of secrets from a root secret.
-    // TODO Should this not be a SortDict as well?
-    function threadsecrets(secret){
-        if(typeof secret.body === 'undefined') return [];
+    function threadsecrets(secret, isunviewed){
+        if(typeof isunviewed === 'undefined'){
+            isunviewed = (typeof secret.body === 'undefined');
+        }else if((typeof secret.body === 'undefined') !== isunviewed) return [];
         var members = [secret];
         each(secret.children, function(child){
-            members = members.concat(threadsecrets(child));
+            members = members.concat(threadsecrets(child, isunviewed));
         });
         return members;
     }
 
-    // Create a thread object from a list of members.
-    function Thread(members){
-        this.members = members;
-
-        this.viewed = this.members.every(function(member){
-            return typeof member.body === 'string';
-        });
-
-        try{
-            this.name = this.members[0].body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
-        }catch(e if e instanceof TypeError){
-            this.name = this.members[0].body.slice(0,20);
+    // Create a thread object from a root secret.
+    function Thread(secret){
+        this.members = threadsecrets(secret);
+        this.root = secret;
+        if(secret.view === true){
+            try{
+                this.name = secret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+            }catch(e){
+                if(e instanceof TypeError){
+                    this.name = secret.body.slice(0,20);
+                }else throw e;
+            }
         }
 
         var viewers = []
-        eachval(this.members[0].viewers, function(viewerids){
+        eachval(this.root.viewers, function(viewerids){
             each(viewerids, function(viewerid){
                 if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
             });
@@ -166,31 +174,31 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     var
         checklist = secrets.keys(),
         threads = [], unviewed = [],
-        secret, members
+        secret, thread
     ;
-
     while(checklist.length > 0){
         secret = secrets.get(checklist.shift());
-        members = threadsecrets(secret);
-        if(members.length > 0){
-            threads.unshift(new Thread(members));
-            each(members, function(member){
-                var pos = checklist.indexOf(member.id);
-                if(pos > -1) checklist.splice(pos, 1);
-            });
+        thread = new Thread(secret);
+        each(thread.members, function(member){
+            var pos = checklist.indexOf(member.id);
+            if(pos > -1) checklist.splice(pos, 1);
+        });
+
+        if(secret.view === true){
+            threads.unshift(thread);
         }else{
             if(secret.parent){
-                if(secret.parent.viewed === true) unviewed.unshift(secret);
+                if(secret.parent.view === true) unviewed.unshift(thread);
             }else{
                 eachval(secret.viewers, function(viewerslist, secretid){
                     if(secretid <= secret.id){
-                        if(secret.viewers[secretid].indexOf(secrets.me) > -1){
-                            unviewed.unshift(secret);
+                        if(viewerslist.indexOf(secrets.me) > -1){
+                            unviewed.unshift(thread);
                             return false;
                         }
                     }else{
-                        if(secrets.get(secretid).viewed === true){
-                            unviewed.unshift(secret);
+                        if(secrets.get(secretid).view === true){
+                            unviewed.unshift(thread);
                             return false;
                         }
                     }
@@ -203,10 +211,13 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $scope.threads = window.t = threads;
     $scope.unviewed = window.u = unviewed;
 
+    // FIXME find me a place.
     $scope.nojsstyle = 'display: none';
+
+// A controller for composing secrets.
 }]).controller('composer', ['$scope', '$http', function($scope, $http){
 
-    // TODO directivise this shit. Or maybe just let G do it properly.
+    // FIXME directivise this shit. Or maybe just let G do it properly.
     $scope.authparents = [];
     $scope.addauthparent = function(){
         $scope.authparents.push($scope.authparentid);
