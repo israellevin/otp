@@ -245,7 +245,7 @@ if __name__ == '__main__':
     # 4
     ss.append(Secret('orly?', 2, parentid=3,
         viewerids=[], authparentids=[3], authchildids=[]))
-    View.get(1, 4, None, True)
+    #View.get(1, 4, None, True)
     # 5
     ss.append(Secret('tell on ruby', 2, parentid=None,
         viewerids=[3], authparentids=[], authchildids=[3]))

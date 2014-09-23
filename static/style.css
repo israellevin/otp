@@ -56,7 +56,14 @@ form input[type='submit'] {
 
 
 
+.main {
+    margin-top:75px;
+}
 
+#compose {
+    margin:20px; 
+}
+#compose input,#compose textarea {float:right;}
 
 #nojs{
     position: absolute;

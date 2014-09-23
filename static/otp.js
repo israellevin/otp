@@ -73,6 +73,14 @@ function SortDict(){
             return callback(this.get(key), key);
         }, this);
     };
+
+    this.toarray = function(){
+        var arr = [];
+        this.each(function(member){
+            arr.push(member);
+        });
+        return arr;
+    };
 }
 
 // A secrets service to enhance and serve the server injected secrets.
@@ -148,21 +156,66 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     }
 
     // Create a thread object from a root secret.
-    function Thread(secret){
-        this.members = threadsecrets(secret);
-        this.root = secret;
-        if(secret.view === true){
-            try{
-                this.name = secret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
-            }catch(e){
-                if(e instanceof TypeError){
-                    this.name = secret.body.slice(0,20);
-                }else throw e;
-            }
-        }
+    function Thread(rootsecret){
 
+        // Get your members (secrets, not viewers!).
+        this.members = new SortDict();
+        this.add = function(members){
+            each(members, function(member){
+                member.thread = this;
+                this.members.add(member.id, member);
+            }, this);
+        };
+        this.add(threadsecrets(rootsecret));
+
+        // Name viewed threads, add view function to unviewed threads.
+        this.setview = function(){
+            if(this.rootsecret.view === true){
+                try{
+                    this.name = this.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+                }catch(e){
+                    if(e instanceof TypeError){
+                        this.name = this.rootsecret.body.slice(0,19) + '…';
+                    }else throw e;
+                }
+            }else{
+                this.view = function(){
+                    var counter = 0;
+                    // Request all members, wait till they all arrive.
+                    this.members.each(function(member){
+                        counter++;
+                        member.view(function(newmember){
+                            var target;
+                            counter--;
+                            if(counter === 0){
+                                // Try to add the thread to its root's parent,
+                                // otherwise move it to viewed.
+                                this.setview();
+                                try{
+                                    target = this.rootsecret.parent.thread;
+                                    target.add(this.members.toarray());
+                                }catch(e){
+                                    if(e instanceof TypeError){
+                                        target = this;
+                                        $scope.viewed.unshift(target);
+                                    }else throw e;
+                                }finally{
+                                    var pos = $scope.unviewed.indexOf(target);
+                                    if(pos > -1) $scope.unviewed.splice(pos, 1);
+                                    $scope.data.activethread = target;
+                                }
+                            }
+                        }.bind(this));
+                    }, this);
+                }
+            }
+        };
+        this.rootsecret = rootsecret;
+        this.setview();
+
+        // Link viewers.
         var viewers = []
-        eachval(this.root.viewers, function(viewerids){
+        eachval(this.rootsecret.viewers, function(viewerids){
             each(viewerids, function(viewerid){
                 if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
             });
@@ -173,19 +226,19 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     // Pull threads off checklist till we run out of unthreaded secrets.
     var
         checklist = secrets.keys(),
-        threads = [], unviewed = [],
+        viewed = [], unviewed = [],
         secret, thread
     ;
     while(checklist.length > 0){
         secret = secrets.get(checklist.shift());
         thread = new Thread(secret);
-        each(thread.members, function(member){
+        thread.members.each(function(member){
             var pos = checklist.indexOf(member.id);
             if(pos > -1) checklist.splice(pos, 1);
         });
 
         if(secret.view === true){
-            threads.unshift(thread);
+            viewed.unshift(thread);
         }else{
             if(secret.parent){
                 if(secret.parent.view === true) unviewed.unshift(thread);
@@ -208,7 +261,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     }
 
     $scope.secrets = window.s = secrets;
-    $scope.threads = window.t = threads;
+    $scope.viewed = window.t = viewed;
     $scope.unviewed = window.u = unviewed;
 
     // FIXME find me a place.
