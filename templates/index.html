@@ -36,7 +36,7 @@
 
     <div id=unviewed class="col-md-3">
         <h3>New!!</h3>
-        <div class=thread data-ng-repeat="thread in unviewed" data-ng-click="thread.view()">
+        <div class=thread data-ng-repeat="thread in ripe" data-ng-click="thread.view()">
             <h4>from:{{thread.root.author.name}}</h4>
             <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
         </div>

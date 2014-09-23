@@ -172,7 +172,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         this.setview = function(){
             if(this.rootsecret.view === true){
                 try{
-                    this.name = this.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+                    this.name = this.rootsecret.body.match(
+                        /^[^\n]{0,20}($|[\n\s])/
+                    )[0];
                 }catch(e){
                     if(e instanceof TypeError){
                         this.name = this.rootsecret.body.slice(0,19) + '…';
@@ -200,9 +202,16 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                                         $scope.viewed.unshift(target);
                                     }else throw e;
                                 }finally{
-                                    var pos = $scope.unviewed.indexOf(target);
-                                    if(pos > -1) $scope.unviewed.splice(pos, 1);
+                                    var pos = $scope.ripe.indexOf(target);
+                                    if(pos > -1) $scope.ripe.splice(pos, 1);
                                     $scope.data.activethread = target;
+                                    each($scope.hidden, function(thread){
+                                        if($scope.sortthread(thread) === 'ripe'){
+                                            $scope.ripe.unshift(thread);
+                                            pos = $scope.hidden.indexOf(thread);
+                                            if(pos > -1) $scope.hidden.splice(pos, 1);
+                                        }
+                                    });
                                 }
                             }
                         }.bind(this));
@@ -223,46 +232,47 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         this.viewers = viewers;
     }
 
+    // Decide whether a thread is viewed, ripe or hidden.
+    $scope.sortthread = function(thread){
+        var rootsecret = thread.rootsecret;
+        var target = 'hidden';
+        if(rootsecret.view === true) return 'viewed';
+        if(rootsecret.parent){
+            if(rootsecret.parent.view === true) return 'ripe';
+            else return 'hidden';
+        }
+        eachval(rootsecret.viewers, function(viewerslist, secretid){
+            if(secretid <= rootsecret.id){
+                if(viewerslist.indexOf(secrets.me) > -1){
+                    target = 'ripe';
+                    return false;
+                }
+            }else{
+                if(secrets.get(secretid).view === true){
+                    target = 'ripe';
+                    return false;
+                }
+            }
+        });
+        return target;
+    }
+
     // Pull threads off checklist till we run out of unthreaded secrets.
-    var
-        checklist = secrets.keys(),
-        viewed = [], unviewed = [],
-        secret, thread
-    ;
+    $scope.viewed = window.v = [];
+    $scope.ripe = window.r = [];
+    $scope.hidden = window.h = [];
+    var checklist = secrets.keys(), rootsecret, thread;
     while(checklist.length > 0){
-        secret = secrets.get(checklist.shift());
-        thread = new Thread(secret);
+        rootsecret = secrets.get(checklist.shift());
+        thread = new Thread(rootsecret);
         thread.members.each(function(member){
             var pos = checklist.indexOf(member.id);
             if(pos > -1) checklist.splice(pos, 1);
         });
-
-        if(secret.view === true){
-            viewed.unshift(thread);
-        }else{
-            if(secret.parent){
-                if(secret.parent.view === true) unviewed.unshift(thread);
-            }else{
-                eachval(secret.viewers, function(viewerslist, secretid){
-                    if(secretid <= secret.id){
-                        if(viewerslist.indexOf(secrets.me) > -1){
-                            unviewed.unshift(thread);
-                            return false;
-                        }
-                    }else{
-                        if(secrets.get(secretid).view === true){
-                            unviewed.unshift(thread);
-                            return false;
-                        }
-                    }
-                });
-            }
-        }
+        $scope[$scope.sortthread(thread)].unshift(thread);
     }
 
     $scope.secrets = window.s = secrets;
-    $scope.viewed = window.t = viewed;
-    $scope.unviewed = window.u = unviewed;
 
     // FIXME find me a place.
     $scope.nojsstyle = 'display: none';
