@@ -85,26 +85,27 @@ class View(Base):
     viewer = relationship('Viewer', backref='views')
     secret = relationship('Secret', backref='views')
 
-    def __init__(self, viewerid, secretid):
-        self.viewerid ,self.secretid = viewerid, secretid
-        session.flush()
+    def __init__(self, viewerid, secretid, personal):
+        self.viewerid ,self.secretid, self.personal = (
+            viewerid, secretid, personal
+        )
+        session.commit()
 
     def __repr__(self):
         return "v:%s->%i" % (self.viewer.name, self.secret.id)
 
     @classmethod
-    def get(cls, viewerid, secretid, create=None, personal=None, viewed=None):
+    def get(cls, viewerid, secretid, createmode=None, personal=None, viewed=None):
         try:
             view = session.query(cls).filter_by(
                 secretid=secretid, viewerid=viewerid
             ).one()
         except exc.SQLAlchemyError:
-            if not create:
+            if not createmode:
                 return False
             else:
-                view = cls(viewerid, secretid)
+                view = cls(viewerid, secretid, createmode)
 
-        if personal is not None: view.personal = personal
         if type(viewed) is datetime: view.viewed = viewed
         elif viewed is not None: view.viewed = datetime.now()
         if None not in (personal, viewed): session.commit()
@@ -248,15 +249,12 @@ if __name__ == '__main__':
     # 4
     ss.append(Secret('benedict rushes to bleys and schtinks', us[2].id, parentid=ss[2].id,
         viewerids=[us[3].id], authparentids=[], authchildids=[ss[2].id]))
-    View.get(us[3].id, ss[2].id, False, None, True)
-    View.get(us[3].id, ss[3].id, False, None, True)
-    View.get(us[3].id, ss[4].id, False, None, True)
     # 5
     ss.append(Secret('ruby rushes to bleys and schtinks', us[1].id, parentid=ss[2].id,
         viewerids=[us[3].id], authparentids=[], authchildids=[ss[2].id]))
     View.get(us[1].id, ss[5].id, False, None, True)
     View.get(us[2].id, ss[5].id, False, None, True)
-    View.get(us[3].id, ss[5].id, False, None, True)
+    #View.get(us[3].id, ss[5].id, False, None, True)
     View.get(us[4].id, ss[5].id, False, None, True)
 
     ss.append(Secret('rubys unread', us[2].id, None,

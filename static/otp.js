@@ -22,7 +22,7 @@ function map(arr, func, thisarg){
 function eachval(dictionary, func, thisarg){
     if(thisarg) func = func.bind(thisarg);
     each(Object.keys(dictionary), function(key){
-        return func(dictionary[key]);
+        return func(dictionary[key], key);
     });
 }
 
@@ -75,7 +75,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     each($window.rawviewers, function(rawviewer){
         viewers[rawviewer.id] = rawviewer;
     });
-    var me = viewers[$window.uid];
+    this.me = viewers[$window.uid];
 
     this.index = new SortDict();
     this.add = function(rawsecret){
@@ -163,18 +163,40 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     }
 
     // Pull threads off checklist till we run out of unthreaded secrets.
-    var root, members, unviewed = [], threads = [], checklist = secrets.keys();
-    var checklist = secrets.keys(), threads = [], unviewed = [], root, members;
+    var
+        checklist = secrets.keys(),
+        threads = [], unviewed = [],
+        secret, members
+    ;
+
     while(checklist.length > 0){
-        root = secrets.get(checklist.shift());
-        members = threadsecrets(root);
+        secret = secrets.get(checklist.shift());
+        members = threadsecrets(secret);
         if(members.length > 0){
             threads.unshift(new Thread(members));
             each(members, function(member){
                 var pos = checklist.indexOf(member.id);
                 if(pos > -1) checklist.splice(pos, 1);
             });
-        }else unviewed.unshift(root);
+        }else{
+            if(secret.parent){
+                if(secret.parent.viewed === true) unviewed.unshift(secret);
+            }else{
+                eachval(secret.viewers, function(viewerslist, secretid){
+                    if(secretid <= secret.id){
+                        if(secret.viewers[secretid].indexOf(secrets.me) > -1){
+                            unviewed.unshift(secret);
+                            return false;
+                        }
+                    }else{
+                        if(secrets.get(secretid).viewed === true){
+                            unviewed.unshift(secret);
+                            return false;
+                        }
+                    }
+                });
+            }
+        }
     }
 
     $scope.secrets = window.s = secrets;

@@ -62,14 +62,20 @@ def jsonable(view):
         'id': secret.id,
         'time': secret.time,
         'authorid': secret.authorid,
-        'parentid': secret.parentid,
-        'childids': [child.id for child in secret.children],
+        'childids': [
+            child.id
+            for child in secret.children
+            if db.View.get(current_user.id, child.id)
+        ],
         'viewers': {
             group: [viewer.id for viewer in viewers]
             for group, viewers in secret.knownviewers(current_user).items()
         }
     }
-    if view.viewed: jsonable['body'] = secret.body
+    if db.View.get(current_user.id, secret.parentid):
+        jsonable['parentid'] = secret.parentid,
+    if view.viewed:
+        jsonable['body'] = secret.body
     return jsonable
 
 @app.route('/')
