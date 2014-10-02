@@ -38,22 +38,19 @@ loginmanager.login_view = 'login'
 def load_user(userid):
     return db.Viewer.getbyid(userid)
 
-# FIXME Once wefinish debuging, this should only work with POST.
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     logout_user()
     session.clear()
-    if not 'passphrase' in request.values:
+    if request.method == 'GET' or 'passphrase' not in request.values:
         return render_template('login.html')
     if 'name' in request.values:
         user = db.Viewer(request.values['name'], request.values['passphrase'])
     else:
         user = db.Viewer.getbypass(request.values['passphrase'])
     if user is None:
-        flash('New user')
         return render_template('login.html')
-    try: login_user(user)
-    except AttributeError: flash('Bad login')
+    login_user(user)
     return redirect(request.values.get('next', url_for('index')))
 
 def jsonable(view):
@@ -100,15 +97,21 @@ def jsonp(f):
         return current_app.response_class(data, mimetype=mimetype)
     return wraped
 
-@app.route('/secret', methods=['GET', 'POST'])
+@app.route('/secrets')
 @login_required
 @jsonp
-def getsecret():
-    view = db.View.get(current_user.id, request.values['id'], None, True)
+def getsecrets():
+    return [jsonable(view) for view in current_user.views]
+
+@app.route('/secrets/<int:secretid>')
+@login_required
+@jsonp
+def getsecret(secretid):
+    view = db.View.get(current_user.id, secretid, None, True)
     if not view: return {'error': 'unauthorized'}
     return jsonable(view)
 
-@app.route('/post', methods=['GET', 'POST'])
+@app.route('/post', methods=['POST'])
 @login_required
 @jsonp
 def postsecret():

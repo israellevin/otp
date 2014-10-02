@@ -113,9 +113,8 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
             secret.view = true;
         }else secret.view = function(callback){
             $http({
-                url: 'secret',
-                method: 'post',
-                params: {id: secret.id},
+                url: '/secrets/' + secret.id,
+                method: 'GET',
             }).success(function(data){
                 callback(this.service.add(data));
             }.bind(this)).error(function(data){
@@ -238,8 +237,8 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
     $scope.post = function(){
         $http({
-            url: 'post',
-            method: 'post',
+            url: '/post',
+            method: 'POST',
             params: {
                 body: $scope.body,
                 parentid: $scope.parentid,
