@@ -70,7 +70,7 @@ def jsonable(view):
         }
     }
     if db.View.get(current_user.id, secret.parentid):
-        jsonable['parentid'] = secret.parentid,
+        jsonable['parentid'] = secret.parentid
     if view.viewed:
         jsonable['body'] = secret.body
     return jsonable

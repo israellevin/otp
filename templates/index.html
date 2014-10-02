@@ -1,6 +1,7 @@
 <!doctype html>
 <title>OTP - The One True Page</title>
 <meta charset=utf-8>
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='bootstrap.css')}}">
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
 <script>
     var uid = {{current_user.id}};
@@ -21,35 +22,47 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=threads ng-init="data.activethread = null">
+<div data-ng-app=otp data-ng-controller=threads ng-init="data.activethread = null" class=main>
     <div id=nojs style="{{nojsstyle}}">
         You must have JavaScript turned off.
     </div>
-    <div id=threads>
-        <div class=thread data-ng-repeat="thread in threads" data-ng-click="data.activethread = thread">
-            <h1>{{thread.name}}</h1>
+    <div id=threads class="col-md-3">
+        <h3>Threads</h3>
+        <div class=thread data-ng-repeat="thread in viewed" data-ng-click="data.activethread = thread">
+            <h4>{{thread.name}}</h4>
             <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
         </div>
     </div>
-    <div id=secrets>
-        <div class=secret data-ng-repeat="secret in data.activethread.members">
+
+    <div id=unviewed class="col-md-3">
+        <h3>New!!</h3>
+        <div class=thread data-ng-repeat="thread in ripe" data-ng-click="viewthread(thread)">
+            <h4>from:{{thread.root.author.name}}</h4>
+            <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
+        </div>
+    </div>
+
+    <div id=secrets class="col-md-9">
+        <div class=secret data-ng-repeat="secret in data.activethread.members.toarray()">
             {{secret.author.name}}: {{secret.body}}
         </div>
     </div>
-    <div id=compose data-ng-controller=composer>
-        parentid:
-        <input type=text data-ng-model=parentid>
-        add authparentid:
-        <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
-        <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
-        add authchildid:
-        <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
-        <ul><li data-ng-repeat="authchildid in authchildren" data-ng-click="authchildren.splice(this.$index, 1)">{{authchildid}}</li></ul>
-        add viewer:
-        <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
-        <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)">{{viewerid}}</li></ul>
-        <textarea data-ng-model=body></textarea>
-        <input type=button value=send data-ng-click="post()">
+    <div class="col-md-12">
+        <div id=compose data-ng-controller=composer class="col-md-2">
+            parentid:
+            <input type=text data-ng-model=parentid>
+            add authparentid:
+            <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
+            <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
+            add authchildid:
+            <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
+            <ul><li data-ng-repeat="authchildid in authchildren" data-ng-click="authchildren.splice(this.$index, 1)">{{authchildid}}</li></ul>
+            add viewer:
+            <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
+            <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)">{{viewerid}}</li></ul>
+            <textarea data-ng-model=body></textarea>
+            <input type=button value=send data-ng-click="post()">
+        </div>
     </div>
 </div>
 {% endraw %}

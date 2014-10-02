@@ -4,14 +4,12 @@ var log  = console.log;
 (function(){'use strict';
 
 // Iterators.
-function each(arr, func, thisarg){
-    if(thisarg) func = func.bind(thisarg);
+function each(arr, func){
     for(var idx = 0, len = arr.length; idx < len; idx++){
         if(func(arr[idx], idx) === false) break;
     }
 }
-function map(arr, func, thisarg){
-    if(thisarg) func = func.bind(thisarg);
+function map(arr, func){
     var results = [];
     each(arr, function(item){
         var result = func(item);
@@ -19,24 +17,13 @@ function map(arr, func, thisarg){
     });
     return results;
 }
-function eachval(dictionary, func, thisarg){
-    if(thisarg) func = func.bind(thisarg);
+function eachval(dictionary, func){
     each(Object.keys(dictionary), function(key){
         return func(dictionary[key], key);
     });
 }
 
-// Helpers.
-function copy(obj, extension){
-    var copy = obj.constructor();
-    for(var attr in obj){
-        if (obj.hasOwnProperty(attr)) copy[attr] = obj[attr];
-    }
-    if(typeof extension === 'object') for(var attr in extension){
-        if (extension.hasOwnProperty(attr)) copy[attr] = extension[attr];
-    }
-    return copy;
-}
+// A dictionary that holds a sorted array of values.
 function SortDict(){
     this.keys = [];
     this.dict = {};
@@ -67,11 +54,18 @@ function SortDict(){
 
     this.getor = function(id){return this.get(id) || this.add(id, {});};
 
-    this.each = function(callback, thisarg){
-        if(thisarg) callback = callback.bind(thisarg);
+    this.each = function(callback){
         each(this.keys, function(key){
             return callback(this.get(key), key);
-        }, this);
+        }.bind(this));
+    };
+
+    this.toarray = function(){
+        var arr = [];
+        this.each(function(member){
+            arr.push(member);
+        });
+        return arr;
     };
 }
 
@@ -86,6 +80,10 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     this.me = viewers[$window.uid];
 
     this.index = new SortDict();
+    this.get = function(id){return this.index.get(id);};
+    this.keys = function(id){return this.index.keys.slice();};
+
+    // A function to add a secret, linking it to its relatives.
     this.add = function(rawsecret){
         var secret = this.index.getor(rawsecret.id);
 
@@ -99,7 +97,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
         secret.children = map(rawsecret.childids, function(childid){
             return this.index.getor(childid);
-        }, this);
+        }.bind(this));
 
         secret.viewers = {};
         each(Object.keys(rawsecret.viewers), function(key){
@@ -111,6 +109,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         if(typeof rawsecret.body === 'string'){
             secret.body = rawsecret.body;
             secret.view = true;
+        // Prepare a function to fetch unviewed secret from the server.
         }else secret.view = function(callback){
             $http({
                 url: '/secrets/' + secret.id,
@@ -124,12 +123,10 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         return secret;
     };
 
+    // Add all server injected secrets to the service.
     each($window.rawsecrets, function(rawsecret){
         this.add(rawsecret);
-    }, this);
-
-    this.get = function(id){return this.index.get(id);};
-    this.keys = function(id){return this.index.keys.slice();};
+    }.bind(this));
 
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
@@ -147,21 +144,22 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     }
 
     // Create a thread object from a root secret.
-    function Thread(secret){
-        this.members = threadsecrets(secret);
-        this.root = secret;
-        if(secret.view === true){
-            try{
-                this.name = secret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
-            }catch(e){
-                if(e instanceof TypeError){
-                    this.name = secret.body.slice(0,20);
-                }else throw e;
-            }
-        }
+    function Thread(rootsecret){
+        this.rootsecret = rootsecret;
 
+        // Get your members (secrets, not viewers!).
+        this.members = new SortDict();
+        this.add = function(members){
+            each(members, function(member){
+                member.thread = this;
+                this.members.add(member.id, member);
+            }.bind(this));
+        };
+        this.add(threadsecrets(rootsecret));
+
+        // Link viewers.
         var viewers = []
-        eachval(this.root.viewers, function(viewerids){
+        eachval(this.rootsecret.viewers, function(viewerids){
             each(viewerids, function(viewerid){
                 if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
             });
@@ -169,46 +167,98 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         this.viewers = viewers;
     }
 
+    // Get a thread's name.
+    function namethread(thread){
+        try{
+            return thread.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+        }catch(e){
+            if(e instanceof TypeError){
+                return thread.rootsecret.body.slice(0,19) + '…';
+            }else throw e;
+        }
+    };
+
+    // Decide whether a thread is viewed, ripe or hidden.
+    function sortthread(thread){
+        var rootsecret = thread.rootsecret;
+        var target = 'hidden';
+        if(rootsecret.view === true) return 'viewed';
+        if(rootsecret.parent){
+            if(rootsecret.parent.view === true) return 'ripe';
+            else return 'hidden';
+        }
+        eachval(rootsecret.viewers, function(viewerslist, secretid){
+            if(secretid <= rootsecret.id){
+                if(viewerslist.indexOf(secrets.me) > -1){
+                    target = 'ripe';
+                    return false;
+                }
+            }else{
+                if(secrets.get(secretid).view === true){
+                    target = 'ripe';
+                    return false;
+                }
+            }
+        });
+        return target;
+    }
+
+    // Request all members of a thread and refresh threads when they arrive.
+    $scope.viewthread = function(thread){
+        var counter = 0;
+        thread.members.each(function(member){
+            counter++;
+            member.view(function(newmember){
+                var target;
+                counter--;
+                if(counter === 0){
+                    thread.name = namethread(thread);
+                    // Try to add thread members to its parent thread,
+                    // otherwise move it to viewed.
+                    try{
+                        target = thread.rootsecret.parent.thread;
+                        target.add(thread.members.toarray());
+                    }catch(e){
+                        if(e instanceof TypeError){
+                            target = thread;
+                            $scope.viewed.unshift(target);
+                        }else throw e;
+                    }finally{
+                        // Remove thread from ripe.
+                        var pos = $scope.ripe.indexOf(target);
+                        if(pos > -1) $scope.ripe.splice(pos, 1);
+                        $scope.data.activethread = target;
+                        // Go over hidden threads, maybe they are ripe.
+                        each($scope.hidden, function(thread){
+                            if(sortthread(thread) === 'ripe'){
+                                $scope.ripe.unshift(thread);
+                                pos = $scope.hidden.indexOf(thread);
+                                if(pos > -1) $scope.hidden.splice(pos, 1);
+                            }
+                        });
+                    }
+                }
+            });
+        });
+    };
+
     // Pull threads off checklist till we run out of unthreaded secrets.
-    var
-        checklist = secrets.keys(),
-        threads = [], unviewed = [],
-        secret, thread
-    ;
+    $scope.viewed = window.v = [];
+    $scope.ripe = window.r = [];
+    $scope.hidden = window.h = [];
+    var checklist = secrets.keys(), rootsecret, thread;
     while(checklist.length > 0){
-        secret = secrets.get(checklist.shift());
-        thread = new Thread(secret);
-        each(thread.members, function(member){
+        rootsecret = secrets.get(checklist.shift());
+        thread = new Thread(rootsecret);
+        thread.members.each(function(member){
             var pos = checklist.indexOf(member.id);
             if(pos > -1) checklist.splice(pos, 1);
         });
-
-        if(secret.view === true){
-            threads.unshift(thread);
-        }else{
-            if(secret.parent){
-                if(secret.parent.view === true) unviewed.unshift(thread);
-            }else{
-                eachval(secret.viewers, function(viewerslist, secretid){
-                    if(secretid <= secret.id){
-                        if(viewerslist.indexOf(secrets.me) > -1){
-                            unviewed.unshift(thread);
-                            return false;
-                        }
-                    }else{
-                        if(secrets.get(secretid).view === true){
-                            unviewed.unshift(thread);
-                            return false;
-                        }
-                    }
-                });
-            }
-        }
+        $scope[sortthread(thread)].unshift(thread);
+        if(thread.rootsecret.view === true) thread.name = namethread(thread);
     }
 
     $scope.secrets = window.s = secrets;
-    $scope.threads = window.t = threads;
-    $scope.unviewed = window.u = unviewed;
 
     // FIXME find me a place.
     $scope.nojsstyle = 'display: none';

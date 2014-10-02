@@ -53,6 +53,16 @@ form input[type='submit']{
     width: 24.1em;
 }
 
+.main {
+    margin-top:75px;
+}
+
+#compose {
+    margin:20px; 
+}
+#compose input,#compose textarea {float:right;}
+>>>>>>> d28e6b1802df3e2228ada7d5752e5fdaaaa80a46
+
 #nojs{
     position: absolute;
     top: 0;
