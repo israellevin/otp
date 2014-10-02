@@ -1,62 +1,57 @@
-body {
+body{
     background:#e3dbdb url('img/header.png') repeat-x right top;
 }
 
-.mp-logo {
-    display:block; 
+.mp-logo{
+    display:block;
     margin:10em auto 5em;
-    }
+}
 
-.moto {
-    margin:0em auto 1em;    
+.moto{
+    margin:0em auto 1em;
     font-size:2em;
     font-family:Sans;
     color:#483737;
     width:10.4em;
 }
 
+/* Messages from the flask server. */
+div.message{
+    background: red;
+    color: white;
+}
 
-div.message {
+/* Messages in the login form */
+div.login-message{
     color: #d66418;
     padding: 1em;
     background: #CADEEB;
-}
-
-/* messages thrown by the login form [new-user] */
-div.login-message{
     margin: 2em auto;
     width: 5.5em;
     border-radius: 1em;
 }
 
-div.new-message{
-    width: 4.8em;
+form{
+    width:20.5em;
+    margin:0em auto;
 }
 
-form {
-    width:20.5em;
-    margin:0em auto;}
-
-form input {
-    
+form input{
     width:23.5em;
     height:1.5em;
-    margin-bottom:1.6em;}
+    margin-bottom:1.6em;
+}
 
-form input {
-    
+form input{
     width:23.5em;
     height:1.5em;
-    margin-bottom:1.6em;}
+    margin-bottom:1.6em;
+}
 
-form input[type='submit'] {
+form input[type='submit']{
     height: 2.2em;
     width: 24.1em;
-    }
-
-
-
-
+}
 
 #nojs{
     position: absolute;
@@ -67,10 +62,6 @@ form input[type='submit'] {
     background: yellow;
     color: red;
 }
-
-
-
-
 
 span.secret{
     float: left;

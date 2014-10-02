@@ -13,19 +13,19 @@
 <div class=moto>THE ONE TRUE PAGE</div>
 <div class=messages>
     {% for message in get_flashed_messages() %}
-    <div class='message login-message new-message'>{{message}}</div>
+    <div class='message'>{{message}}</div>
     {% endfor %}
 </div>
-<form onsubmit="return validateForm()">
-{% if request.args['passphrase'] %}
+<form method=POST onsubmit="return validateForm()">
+{% if request.form['passphrase'] %}
+	<div class='login-message'>Welcome new user, please choose a name</div>
 	<input name=name placeholder=Name autofocus>
-	<input name=prevpassphrase type=password value="{{request.args['passphrase']}}" disabled>
+	<input name=prevpassphrase type=password value="{{request.form['passphrase']}}" disabled>
     <input name=passphrase type=password placeholder='Repeat Passphrase'>
     <input type=submit>
 {% else %}
-	<div class='message login-message new-message'>Wellcome</div>
+	<div class='login-message'>Speak, friend, and enter</div>
     <input name=passphrase type=password placeholder=Passphrase autofocus>
 {% endif %}
-    <input name=next type=hidden value="{{request.args['next']}}">
+    <input name=next type=hidden value="{{request.form['next']}}">
 </form>
-

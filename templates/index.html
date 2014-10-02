@@ -49,7 +49,7 @@
         <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
         <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)">{{viewerid}}</li></ul>
         <textarea data-ng-model=body></textarea>
-        <input type=submit data-ng-click="post()">
+        <input type=button value=send data-ng-click="post()">
     </div>
 </div>
 {% endraw %}
