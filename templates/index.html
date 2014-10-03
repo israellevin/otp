@@ -4,9 +4,10 @@
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='bootstrap.css')}}">
 <link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
 <script>
-    var uid = {{current_user.id}};
-    var rawviewers = {{viewers|tojson}};
     var rawsecrets = {{secrets|tojson}};
+    var rawviewers = {{viewers|tojson}};
+    var latestsecretid = {{latestsecretid}};
+    var uid = {{current_user.id}};
 </script>
 <script src="{{url_for('static', filename='angular.min.js')}}"></script>
 <script src="{{url_for('static', filename='otp.js')}}"></script>

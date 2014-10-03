@@ -211,6 +211,10 @@ class Secret(Base):
         try: return session.query(cls).filter_by(id=id).one()
         except exc.SQLAlchemyError: return None
 
+    @classmethod
+    def latestid(cls):
+        return session.query(cls).count()
+
 if __name__ == '__main__':
 
     from os.path import isfile

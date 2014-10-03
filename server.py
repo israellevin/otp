@@ -79,8 +79,9 @@ def jsonable(view):
 @login_required
 def index():
     return render_template('index.html',
+            secrets=[jsonable(view) for view in current_user.views],
             viewers=db.Viewer.getall(),
-            secrets=[jsonable(view) for view in current_user.views]
+            latestsecretid=db.Secret.latestid()
     )
 
 from functools import wraps
@@ -101,7 +102,11 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecrets():
-    return [jsonable(view) for view in current_user.views]
+    return [
+        jsonable(view)
+        for view in current_user.views
+        if view.secret.id >= int(request.values.get('fromid', 1))
+    ]
 
 @app.route('/secrets/<int:secretid>')
 @login_required

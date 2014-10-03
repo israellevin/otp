@@ -73,13 +73,8 @@ function SortDict(){
 angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
-    var viewers = {};
-    each($window.rawviewers, function(rawviewer){
-        viewers[rawviewer.id] = rawviewer;
-    });
-    this.me = viewers[$window.uid];
-
     this.index = new SortDict();
+
     this.get = function(id){return this.index.get(id);};
     this.keys = function(id){return this.index.keys.slice();};
 
@@ -91,7 +86,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         secret.id = rawsecret.id;
         secret.time = rawsecret.time;
 
-        secret.author = viewers[rawsecret.authorid];
+        secret.author = this.viewers[rawsecret.authorid];
         if(typeof rawsecret.parentid === 'number')
             secret.parent = this.index.getor(rawsecret.parentid);
 
@@ -102,9 +97,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         secret.viewers = {};
         each(Object.keys(rawsecret.viewers), function(key){
             secret.viewers[key] = map(rawsecret.viewers[key], function(id){
-                return viewers[id];
-            });
-        });
+                return this.viewers[id];
+            }.bind(this));
+        }.bind(this));
 
         if(typeof rawsecret.body === 'string'){
             secret.body = rawsecret.body;
@@ -123,10 +118,20 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         return secret;
     };
 
-    // Add all server injected secrets to the service.
+    // Collect viewers from server injected var.
+    this.viewers = {};
+    each($window.rawviewers, function(rawviewer){
+        this.viewers[rawviewer.id] = rawviewer;
+    }.bind(this));
+
+    // Collect secrets from server injected var.
     each($window.rawsecrets, function(rawsecret){
         this.add(rawsecret);
     }.bind(this));
+
+    // Collect some extra data.
+    this.me = this.viewers[$window.uid];
+    this.latestsecretid = $window.latestsecretid;
 
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
@@ -213,22 +218,22 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                 counter--;
                 if(counter === 0){
                     thread.name = namethread(thread);
-                    // Try to add thread members to its parent thread,
-                    // otherwise move it to viewed.
+                    // Try to add thread members to their parent thread,
+                    // otherwise move the thread to viewed.
                     try{
-                        target = thread.rootsecret.parent.thread;
-                        target.add(thread.members.toarray());
+                        thread.rootsecret.parent.thread.add(
+                            thread.members.toarray()
+                        );
                     }catch(e){
                         if(e instanceof TypeError){
-                            target = thread;
-                            $scope.viewed.unshift(target);
+                            $scope.viewed.unshift(thread);
                         }else throw e;
                     }finally{
                         // Remove thread from ripe.
                         var pos = $scope.ripe.indexOf(target);
                         if(pos > -1) $scope.ripe.splice(pos, 1);
                         $scope.data.activethread = target;
-                        // Go over hidden threads, maybe they are ripe.
+                        // Search for newly ripened threads.
                         each($scope.hidden, function(thread){
                             if(sortthread(thread) === 'ripe'){
                                 $scope.ripe.unshift(thread);
