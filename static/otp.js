@@ -27,15 +27,8 @@ function eachval(dictionary, func){
 function SortDict(){
     this.keys = [];
     this.dict = {};
-
     this.get = function(id){return this.dict[id];};
     this.getbypos = function(pos){return this.dict[this.keys[pos]];};
-    this.remove = function(id){
-        var pos = this.keys.indexOf(id);
-        if(pos === -1) return false;
-        this.keys.splice(pos, 1);
-        return delete this.dict[id];
-    };
 
     function binsearch(arr, val){
         var minidx = 0, maxidx = arr.length - 1, idx;
@@ -69,7 +62,7 @@ function SortDict(){
     };
 }
 
-// A secrets service to enhance and serve the server injected secrets.
+// A secrets service to serve us the server injected secrets.
 angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
@@ -125,6 +118,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         return secret;
     };
 
+    // Load a bunch of secrets and viewers and such.
     this.load = function(data){
         this.viewers.load(data.rawviewers);
         each(data.rawsecrets, function(rawsecret){
@@ -133,6 +127,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         this.latestsecretid = data.latestsecretid;
     };
 
+    // Update from the server.
     this.update = function(callback){
         $http({
             url: '/secrets',
@@ -146,6 +141,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         });
     };
 
+    // Load the secrets the server injected into the page.
     this.load({
         rawsecrets: $window.rawsecrets,
         rawviewers: $window.rawviewers,
@@ -153,8 +149,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     });
 
 // A controller for displaying threads.
-}]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
-
+}]).controller('threads', ['$scope', '$interval', 'secrets', function(
+    $scope, $interval, secrets
+){
     $scope.viewed = [];
     $scope.ripe = [];
     $scope.hidden = [];
@@ -163,7 +160,6 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     function Thread(rootsecret){
         this.rootsecret = rootsecret;
 
-        // The thread's members are its secrets, not its viewers.
         this.members = new SortDict();
         this.add = function(members){
             each(members, function(member){
@@ -183,44 +179,49 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
             }
         };
 
-        // Decide whether a thread is viewed, ripe or hidden.
+        // Sort a thread as viewed, ripe or hidden.
         this.sort = function(){
-            this.type = 'hidden';
+            var type = 'hidden';
             if(this.rootsecret.view === true){
-                this.type = 'viewed';
+                type = 'viewed';
                 this.name = getname(this.rootsecret);
             }else if(this.rootsecret.parent){
-                if(this.rootsecret.parent.view === true) this.type = 'ripe';
-                else this.type = 'hidden';
+                if(this.rootsecret.parent.view === true) type = 'ripe';
+                else type = 'hidden';
             }else eachval(
                 this.rootsecret.viewers,
                 function(viewerslist, secretid){
                     if(secretid <= this.rootsecret.id){
                         if(viewerslist.indexOf(secrets.viewers[uid]) > -1){
-                            this.type = 'ripe';
-                            return false;
+                            return type = 'ripe' && false;
                         }
                     }else{
                         if(secrets.get(secretid).view === true){
-                            this.type = 'ripe';
-                            return false;
+                            return type = 'ripe' && false;
                         }
                     }
                 }.bind(this)
             );
 
-            // FIXME Why would this ever happen?
-            if($scope[this.type].indexOf(this) === -1){
-                $scope[this.type].unshift(this);
+            // Move the thread if its type has changed.
+            var pos;
+            if(!this.type || this.type !== type){
+                if(this.type){
+                    pos = $scope[this.type].indexOf(this);
+                    if(pos > -1) $scope[this.type].splice(pos, 1);
+                }
+                this.type = type;
+                $scope[type].unshift(this);
             }
-            return this.type;
         };
 
         // Recursively gather a thread of secrets from a root secret.
         function threadsecrets(secret, isunviewed){
             if(typeof isunviewed === 'undefined'){
                 isunviewed = (typeof secret.body === 'undefined');
-            }else if((typeof secret.body === 'undefined') !== isunviewed) return [];
+            }else if((typeof secret.body === 'undefined') !== isunviewed){
+                return [];
+            }
             var members = [secret];
             each(secret.children, function(child){
                 members = members.concat(threadsecrets(child, isunviewed));
@@ -253,28 +254,21 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                 counter--;
                 if(counter === 0){
                     // Try to add thread members to their parent thread,
-                    // otherwise move the thread to viewed.
                     try{
                         target = thread.rootsecret.parent.thread;
                         target.add(thread.members.toarray());
-                    }catch(e){
-                        if(!e instanceof TypeError) throw e;
-                    }finally{
-                        // Remove thread from ripe.
                         pos = $scope.ripe.indexOf(thread);
                         if(pos > -1) $scope.ripe.splice(pos, 1);
-
-                        thread.sort();
-                        $scope.data.activethread = target || thread;
-
-                        // Refresh hidden list.
-                        each($scope.hidden, function(thread){
-                            if(thread.sort() !== 'hidden'){
-                                pos = $scope.hidden.indexOf(thread);
-                                if(pos > -1) $scope.hidden.splice(pos, 1);
-                            }
-                        });
+                        $scope.data.activethread = target;
+                    // otherwise move the thread to viewed,
+                    }catch(e){
+                        if(e instanceof TypeError){
+                            thread.sort();
+                            $scope.data.activethread = thread;
+                        }else throw e;
                     }
+                    // Refresh hidden list.
+                    each($scope.hidden, function(thread){thread.sort();});
                 }
             });
         });
@@ -300,6 +294,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
             }));
         });
     };
+    $interval($scope.getnew, 1000);
 
     // FIXME Some debug binds here.
     window.s = secrets;
