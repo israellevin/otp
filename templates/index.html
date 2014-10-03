@@ -18,8 +18,8 @@
     {% endfor %}
 </div>
 
-<div id=toolbar>
-    <a href="{{url_for('login')}}">sign out [{{current_user.name}}]</a>
+<div>
+    <a class=logout href="{{url_for('login')}}">sign out [{{current_user.name}}]</a>
 </div>
 
 {% raw %}
@@ -38,10 +38,12 @@
     <div id=unviewed class="col-md-3">
         <h3>New!!</h3>
         <div class=thread data-ng-repeat="thread in ripe" data-ng-click="viewthread(thread)">
-            <h4>from:{{thread.root.author.name}}</h4>
+            <h4>from:{{thread.rootsecret.author.name}}</h4>
             <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
         </div>
     </div>
+
+    <input type=button value=getnew data-ng-click="getnew()">
 
     <div id=secrets class="col-md-9">
         <div class=secret data-ng-repeat="secret in data.activethread.members.toarray()">

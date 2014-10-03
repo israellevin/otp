@@ -73,12 +73,19 @@ function SortDict(){
 angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
-    this.index = new SortDict();
 
+    this.index = new SortDict();
     this.get = function(id){return this.index.get(id);};
     this.keys = function(id){return this.index.keys.slice();};
 
-    // A function to add a secret, linking it to its relatives.
+    this.viewers = {};
+    this.viewers.load = function(rawviewers){
+        each(rawviewers, function(rawviewer){
+            this[rawviewer.id] = rawviewer;
+        }.bind(this));
+    };
+
+    // Add a secret, linking it to its relatives.
     this.add = function(rawsecret){
         var secret = this.index.getor(rawsecret.id);
 
@@ -104,7 +111,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         if(typeof rawsecret.body === 'string'){
             secret.body = rawsecret.body;
             secret.view = true;
-        // Prepare a function to fetch unviewed secret from the server.
+        // Prepare a function to fetch the unviewed secret from the server.
         }else secret.view = function(callback){
             $http({
                 url: '/secrets/' + secret.id,
@@ -118,41 +125,45 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         return secret;
     };
 
-    // Collect viewers from server injected var.
-    this.viewers = {};
-    each($window.rawviewers, function(rawviewer){
-        this.viewers[rawviewer.id] = rawviewer;
-    }.bind(this));
+    this.load = function(data){
+        this.viewers.load(data.rawviewers);
+        each(data.rawsecrets, function(rawsecret){
+            this.add(rawsecret);
+        }.bind(this));
+        this.latestsecretid = data.latestsecretid;
+    };
 
-    // Collect secrets from server injected var.
-    each($window.rawsecrets, function(rawsecret){
-        this.add(rawsecret);
-    }.bind(this));
+    this.update = function(callback){
+        $http({
+            url: '/secrets',
+            method: 'GET',
+            params: {afterid: (this.latestsecretid || 1)}
+        }).success(function(data){
+            this.load(data);
+            callback(data);
+        }.bind(this)).error(function(data){
+            console.log('server error:', arguments);
+        });
+    };
 
-    // Collect some extra data.
-    this.me = this.viewers[$window.uid];
-    this.latestsecretid = $window.latestsecretid;
+    this.load({
+        rawsecrets: $window.rawsecrets,
+        rawviewers: $window.rawviewers,
+        latestsecretid: $window.latestsecretid
+    });
 
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', 'secrets', function($scope, secrets){
 
-    // Recursively gather a thread of secrets from a root secret.
-    function threadsecrets(secret, isunviewed){
-        if(typeof isunviewed === 'undefined'){
-            isunviewed = (typeof secret.body === 'undefined');
-        }else if((typeof secret.body === 'undefined') !== isunviewed) return [];
-        var members = [secret];
-        each(secret.children, function(child){
-            members = members.concat(threadsecrets(child, isunviewed));
-        });
-        return members;
-    }
+    $scope.viewed = [];
+    $scope.ripe = [];
+    $scope.hidden = [];
 
     // Create a thread object from a root secret.
     function Thread(rootsecret){
         this.rootsecret = rootsecret;
 
-        // Get your members (secrets, not viewers!).
+        // The thread's members are its secrets, not its viewers.
         this.members = new SortDict();
         this.add = function(members){
             each(members, function(member){
@@ -160,10 +171,70 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                 this.members.add(member.id, member);
             }.bind(this));
         };
-        this.add(threadsecrets(rootsecret));
 
-        // Link viewers.
-        var viewers = []
+        // Get a thread's name.
+        function getname(rootsecret){
+            try{
+                return rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+            }catch(e){
+                if(e instanceof TypeError){
+                    return rootsecret.body.slice(0,19) + '…';
+                }else throw e;
+            }
+        };
+
+        // Decide whether a thread is viewed, ripe or hidden.
+        this.sort = function(){
+            this.type = 'hidden';
+            if(this.rootsecret.view === true){
+                this.type = 'viewed';
+                this.name = getname(this.rootsecret);
+            }else if(this.rootsecret.parent){
+                if(this.rootsecret.parent.view === true) this.type = 'ripe';
+                else this.type = 'hidden';
+            }else eachval(
+                this.rootsecret.viewers,
+                function(viewerslist, secretid){
+                    if(secretid <= this.rootsecret.id){
+                        if(viewerslist.indexOf(secrets.viewers[uid]) > -1){
+                            this.type = 'ripe';
+                            return false;
+                        }
+                    }else{
+                        if(secrets.get(secretid).view === true){
+                            this.type = 'ripe';
+                            return false;
+                        }
+                    }
+                }.bind(this)
+            );
+
+            // FIXME Why would this ever happen?
+            if($scope[this.type].indexOf(this) === -1){
+                $scope[this.type].unshift(this);
+            }
+            return this.type;
+        };
+
+        // Recursively gather a thread of secrets from a root secret.
+        function threadsecrets(secret, isunviewed){
+            if(typeof isunviewed === 'undefined'){
+                isunviewed = (typeof secret.body === 'undefined');
+            }else if((typeof secret.body === 'undefined') !== isunviewed) return [];
+            var members = [secret];
+            each(secret.children, function(child){
+                members = members.concat(threadsecrets(child, isunviewed));
+            });
+            return members;
+        }
+
+        // Add all threaded descendants of rootsecret.
+        this.add(threadsecrets(rootsecret));
+        this.sort();
+
+        // Make a flat viewers list.
+        // TODO aggregate viewers from all members?
+        var viewers = [];
         eachval(this.rootsecret.viewers, function(viewerids){
             each(viewerids, function(viewerid){
                 if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
@@ -172,71 +243,33 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         this.viewers = viewers;
     }
 
-    // Get a thread's name.
-    function namethread(thread){
-        try{
-            return thread.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
-        }catch(e){
-            if(e instanceof TypeError){
-                return thread.rootsecret.body.slice(0,19) + '…';
-            }else throw e;
-        }
-    };
-
-    // Decide whether a thread is viewed, ripe or hidden.
-    function sortthread(thread){
-        var rootsecret = thread.rootsecret;
-        var target = 'hidden';
-        if(rootsecret.view === true) return 'viewed';
-        if(rootsecret.parent){
-            if(rootsecret.parent.view === true) return 'ripe';
-            else return 'hidden';
-        }
-        eachval(rootsecret.viewers, function(viewerslist, secretid){
-            if(secretid <= rootsecret.id){
-                if(viewerslist.indexOf(secrets.me) > -1){
-                    target = 'ripe';
-                    return false;
-                }
-            }else{
-                if(secrets.get(secretid).view === true){
-                    target = 'ripe';
-                    return false;
-                }
-            }
-        });
-        return target;
-    }
-
     // Request all members of a thread and refresh threads when they arrive.
     $scope.viewthread = function(thread){
         var counter = 0;
         thread.members.each(function(member){
             counter++;
             member.view(function(newmember){
-                var target;
+                var target, pos;
                 counter--;
                 if(counter === 0){
-                    thread.name = namethread(thread);
                     // Try to add thread members to their parent thread,
                     // otherwise move the thread to viewed.
                     try{
-                        thread.rootsecret.parent.thread.add(
-                            thread.members.toarray()
-                        );
+                        target = thread.rootsecret.parent.thread;
+                        target.add(thread.members.toarray());
                     }catch(e){
-                        if(e instanceof TypeError){
-                            $scope.viewed.unshift(thread);
-                        }else throw e;
+                        if(!e instanceof TypeError) throw e;
                     }finally{
                         // Remove thread from ripe.
-                        var pos = $scope.ripe.indexOf(target);
+                        pos = $scope.ripe.indexOf(thread);
                         if(pos > -1) $scope.ripe.splice(pos, 1);
-                        $scope.data.activethread = target;
-                        // Search for newly ripened threads.
+
+                        thread.sort();
+                        $scope.data.activethread = target || thread;
+
+                        // Refresh hidden list.
                         each($scope.hidden, function(thread){
-                            if(sortthread(thread) === 'ripe'){
-                                $scope.ripe.unshift(thread);
+                            if(thread.sort() !== 'hidden'){
                                 pos = $scope.hidden.indexOf(thread);
                                 if(pos > -1) $scope.hidden.splice(pos, 1);
                             }
@@ -247,30 +280,38 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         });
     };
 
-    // Pull threads off checklist till we run out of unthreaded secrets.
-    $scope.viewed = window.v = [];
-    $scope.ripe = window.r = [];
-    $scope.hidden = window.h = [];
-    var checklist = secrets.keys(), rootsecret, thread;
-    while(checklist.length > 0){
-        rootsecret = secrets.get(checklist.shift());
-        thread = new Thread(rootsecret);
-        thread.members.each(function(member){
-            var pos = checklist.indexOf(member.id);
-            if(pos > -1) checklist.splice(pos, 1);
-        });
-        $scope[sortthread(thread)].unshift(thread);
-        if(thread.rootsecret.view === true) thread.name = namethread(thread);
+    // Pull threads out of a checklist of IDs.
+    function threadchecklist(checklist){
+        while(checklist.length > 0){
+            new Thread(secrets.get(checklist.shift())).members.each(
+                function(member){
+                    var pos = checklist.indexOf(member.id);
+                    if(pos > -1) checklist.splice(pos, 1);
+                }
+            );
+        }
     }
+    threadchecklist(secrets.keys());
 
-    $scope.secrets = window.s = secrets;
+    $scope.getnew = function(){
+        secrets.update(function(data){
+            threadchecklist(map(data.rawsecrets, function(rawsecret){
+                return rawsecret.id;
+            }));
+        });
+    };
+
+    // FIXME Some debug binds here.
+    window.s = secrets;
+    window.v = $scope.viewed;
+    window.r = $scope.ripe;
+    window.h = $scope.hidden;
 
     // FIXME find me a place.
     $scope.nojsstyle = 'display: none';
 
 // A controller for composing secrets.
 }]).controller('composer', ['$scope', '$http', function($scope, $http){
-
     // FIXME directivise this shit. Or maybe just let G do it properly.
     $scope.authparents = [];
     $scope.addauthparent = function(){
@@ -303,7 +344,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
             }
         }).success(function(data){
-            console.log('gotit', arguments);
+            $scope.getnew();
         }).error(function(data){
             console.log('server error:', arguments);
         });

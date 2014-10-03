@@ -43,7 +43,11 @@ def login():
     logout_user()
     session.clear()
     if request.method == 'GET' or 'passphrase' not in request.values:
-        return render_template('login.html')
+        return render_template(
+            'login.html',
+            numofviewers=len(db.Viewer.getall()),
+            numofsecrets=db.Secret.latestid()
+        )
     if 'name' in request.values:
         user = db.Viewer(request.values['name'], request.values['passphrase'])
     else:
@@ -102,11 +106,15 @@ def jsonp(f):
 @login_required
 @jsonp
 def getsecrets():
-    return [
-        jsonable(view)
-        for view in current_user.views
-        if view.secret.id >= int(request.values.get('fromid', 1))
-    ]
+    return {
+        'rawsecrets': [
+            jsonable(view)
+            for view in current_user.views
+            if view.secret.id > int(request.values.get('afterid', 1))
+        ],
+        'rawviewers': db.Viewer.getall(),
+        'latestsecretid': db.Secret.latestid()
+    }
 
 @app.route('/secrets/<int:secretid>')
 @login_required

@@ -24,8 +24,9 @@
     <input name=passphrase type=password placeholder='Repeat Passphrase'>
     <input type=submit>
 {% else %}
-	<div class='login-message'>Speak, friend, and enter</div>
+    <div class='login-message'>Speak, friend, and enter</div>
     <input name=passphrase type=password placeholder=Passphrase autofocus>
+    <p class=teaser>{{numofsecrets}} secrets shared by {{numofviewers}} viewers await you</p>
 {% endif %}
     <input name=next type=hidden value="{{request.form['next']}}">
 </form>

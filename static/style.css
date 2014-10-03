@@ -21,6 +21,10 @@ div.message{
     color: white;
 }
 
+a.logout{
+    color: white;
+}
+
 /* Messages in the login form */
 div.login-message{
     color: #d66418;
