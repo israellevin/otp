@@ -193,11 +193,11 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                 function(viewerslist, secretid){
                     if(secretid <= this.rootsecret.id){
                         if(viewerslist.indexOf(secrets.viewers[uid]) > -1){
-                            return type = 'ripe' && false;
+                            return (type = 'ripe') && false;
                         }
                     }else{
                         if(secrets.get(secretid).view === true){
-                            return type = 'ripe' && false;
+                            return (type = 'ripe') && false;
                         }
                     }
                 }.bind(this)
