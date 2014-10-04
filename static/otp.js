@@ -155,6 +155,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $scope.viewed = [];
     $scope.ripe = [];
     $scope.hidden = [];
+    $scope.subs = [];
+    $scope.data = {};
+    $scope.viewers = secrets.viewers;
 
     // Create a thread object from a root secret.
     function Thread(rootsecret){
@@ -169,22 +172,39 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         };
 
         // Get a thread's name.
-        function getname(rootsecret){
+        this.getname = function(){
             try{
-                return rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+                return this.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
             }catch(e){
                 if(e instanceof TypeError){
-                    return rootsecret.body.slice(0,19) + '…';
+                    return this.rootsecret.body.slice(0,19) + '…';
                 }else throw e;
             }
         };
 
-        // Sort a thread as viewed, ripe or hidden.
+        // Get a thread's parent thread, if it exists.
+        this.getparent = function(){
+            var parent;
+            try{
+                return this.rootsecret.parent.thread;
+            }catch(e){
+                if(!e instanceof TypeError) throw e;
+                return false;
+            }
+        }
+
+        // Sort a thread as viewed, ripe, hidden or subthread.
         this.sort = function(){
-            var type = 'hidden';
+            var type = 'hidden', parent = null;
             if(this.rootsecret.view === true){
-                type = 'viewed';
-                this.name = getname(this.rootsecret);
+                parent = this.getparent();
+                if(parent){
+                    type = 'subs';
+                    parent.add(this.members.toarray());
+                }else{
+                    type = 'viewed';
+                    this.name = this.getname();
+                }
             }else if(this.rootsecret.parent){
                 if(this.rootsecret.parent.view === true) type = 'ripe';
                 else type = 'hidden';
@@ -253,22 +273,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
                 var target, pos;
                 counter--;
                 if(counter === 0){
-                    // Try to add thread members to their parent thread,
-                    try{
-                        target = thread.rootsecret.parent.thread;
-                        target.add(thread.members.toarray());
-                        pos = $scope.ripe.indexOf(thread);
-                        if(pos > -1) $scope.ripe.splice(pos, 1);
-                        $scope.data.activethread = target;
-                    // otherwise move the thread to viewed,
-                    }catch(e){
-                        if(e instanceof TypeError){
-                            thread.sort();
-                            $scope.data.activethread = thread;
-                        }else throw e;
-                    }
-                    // Refresh hidden list.
+                    thread.sort();
                     each($scope.hidden, function(thread){thread.sort();});
+                    $scope.data.activethread = thread.rootsecret.thread;
                 }
             });
         });
@@ -286,15 +293,18 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         }
     }
     threadchecklist(secrets.keys());
+    if($scope.viewed.length > 0) $scope.data.activethread = $scope.viewed[0];
+    else $scope.data.activethread = null;
 
-    $scope.getnew = function(){
+    $scope.getnew = function(callback){
         secrets.update(function(data){
             threadchecklist(map(data.rawsecrets, function(rawsecret){
                 return rawsecret.id;
             }));
+            if(typeof callback === 'function') callback(data);
         });
     };
-    $interval($scope.getnew, 1000);
+    $interval($scope.getnew, 100000);
 
     // FIXME Some debug binds here.
     window.s = secrets;
@@ -306,7 +316,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $scope.nojsstyle = 'display: none';
 
 // A controller for composing secrets.
-}]).controller('composer', ['$scope', '$http', function($scope, $http){
+}]).controller('composer', ['$scope', '$http', 'secrets', function(
+    $scope, $http, secrets
+){
     // FIXME directivise this shit. Or maybe just let G do it properly.
     $scope.authparents = [];
     $scope.addauthparent = function(){
@@ -339,7 +351,14 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
             }
         }).success(function(data){
-            $scope.getnew();
+            $scope.body = '';
+            $scope.parentid = '';
+            $scope.authparents = [];
+            $scope.authchildren = [];
+            $scope.viewers = [];
+            $scope.getnew(function(){
+                $scope.data.activethread = secrets.get(this).thread;
+            }.bind(data));
         }).error(function(data){
             console.log('server error:', arguments);
         });

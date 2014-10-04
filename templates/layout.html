@@ -1,0 +1,12 @@
+<!doctype html>
+<title>OTP - The One True Page</title>
+<meta charset=utf-8>
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='bootstrap.css')}}">
+<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+<div class=messages>
+{% for message in get_flashed_messages() %}
+    <p class=message>{{message}}</p>
+{% endfor %}
+</div>
+{% block body %}
+{% endblock %}

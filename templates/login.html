@@ -1,32 +1,26 @@
-<!doctype html>
-<title>OTP - The One True Page</title>
-<meta charset=utf-8>
-<link rel=stylesheet type=text/css href="{{url_for('static', filename='style.css')}}">
+{% extends "layout.html" %}
+{% block body %}
 <script>
 	function validateForm(){
 		if(document.forms[0][1].value===document.forms[0][2].value) return true;
 		return false;
 	}
-
 </script>
-<img class='mp-logo' src='static/img/logo.svg' alt='logo'>
+
+<img class=logo src=static/img/logo.svg alt=logo>
 <div class=moto>THE ONE TRUE PAGE</div>
-<div class=messages>
-    {% for message in get_flashed_messages() %}
-    <div class='message'>{{message}}</div>
-    {% endfor %}
-</div>
-<form method=POST onsubmit="return validateForm()">
+<form method=post onsubmit="return validateForm()">
 {% if request.form['passphrase'] %}
-	<div class='login-message'>Welcome new user, please choose a name</div>
+	<div class=login-message>Welcome new user, please choose a name</div>
 	<input name=name placeholder=Name autofocus>
 	<input name=prevpassphrase type=password value="{{request.form['passphrase']}}" disabled>
     <input name=passphrase type=password placeholder='Repeat Passphrase'>
     <input type=submit>
 {% else %}
-    <div class='login-message'>Speak, friend, and enter</div>
+    <div class=login-message>Speak, friend, and enter</div>
     <input name=passphrase type=password placeholder=Passphrase autofocus>
     <p class=teaser>{{numofsecrets}} secrets shared by {{numofviewers}} viewers await you</p>
 {% endif %}
     <input name=next type=hidden value="{{request.form['next']}}">
 </form>
+{% endblock %}

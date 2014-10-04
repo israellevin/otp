@@ -43,6 +43,7 @@ def login():
     logout_user()
     session.clear()
     if request.method == 'GET' or 'passphrase' not in request.values:
+        flash('this is what server messages look like');
         return render_template(
             'login.html',
             numofviewers=len(db.Viewer.getall()),
@@ -128,17 +129,14 @@ def getsecret(secretid):
 @login_required
 @jsonp
 def postsecret():
-    return {
-        'posttime':
-            db.Secret(
-                request.values.get('body'),
-                current_user.id,
-                request.values.get('parentid'),
-                request.values.getlist('viewerids[]'),
-                request.values.getlist('authparentids[]'),
-                request.values.getlist('authchildids[]')
-            ).time
-    }
+    return db.Secret(
+        request.values.get('body'),
+        current_user.id,
+        request.values.get('parentid'),
+        request.values.getlist('viewerids[]'),
+        request.values.getlist('authparentids[]'),
+        request.values.getlist('authchildids[]')
+    ).id
 
 if __name__ == '__main__':
     from sys import argv

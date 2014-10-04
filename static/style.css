@@ -2,7 +2,23 @@ body{
     background:#e3dbdb url('img/header.png') repeat-x right top;
 }
 
-.mp-logo{
+#nojs{
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    min-height: 2em;
+    background: yellow;
+    color: red;
+}
+
+/* Messages from the flask server. */
+p.message{
+    background: red;
+    color: white;
+}
+
+.logo{
     display:block;
     margin:10em auto 5em;
 }
@@ -13,16 +29,6 @@ body{
     font-family:Sans;
     color:#483737;
     width:10.4em;
-}
-
-/* Messages from the flask server. */
-div.message{
-    background: red;
-    color: white;
-}
-
-a.logout{
-    color: white;
 }
 
 /* Messages in the login form */
@@ -57,24 +63,20 @@ form input[type='submit']{
     width: 24.1em;
 }
 
-.main {
+#main{
     margin-top:75px;
 }
 
-#compose {
-    margin:20px; 
-}
-#compose input,#compose textarea {float:right;}
->>>>>>> d28e6b1802df3e2228ada7d5752e5fdaaaa80a46
-
-#nojs{
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    min-height: 2em;
+div.curthread{
     background: yellow;
-    color: red;
+}
+
+#compose{
+    margin:20px;
+}
+
+a.logout{
+    color: white;
 }
 
 span.secret{

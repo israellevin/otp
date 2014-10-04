@@ -109,6 +109,7 @@ class View(Base):
         if viewed is not None:
             if type(viewed) is datetime: view.viewed = viewed
             else: view.viewed = datetime.now()
+            view.viewer.lastseen = view.viewed
             session.commit()
         return view
 
