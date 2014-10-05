@@ -72,7 +72,7 @@ class Viewer(Base, UserMixin):
             {'id': viewer[0], 'name': viewer[1], 'lastseen': viewer[2]}
             for viewer in session.query(cls.id, cls.name, cls.lastseen).all()
         ]
-        except exc.SQLAlchemyError: return None
+        except exc.SQLAlchemyError: return []
 
 class View(Base):
     __tablename__ = 'views'

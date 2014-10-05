@@ -113,10 +113,12 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
     // Load a bunch of secrets and viewers and such.
     this.load = function(data){
+        log(data);
         each(data.rawviewers, function(rawviewer){
             this[rawviewer.id] = rawviewer;
         }.bind(this.viewers));
         each(data.rawsecrets, function(rawsecret){
+            log(rawsecret);
             this.add(rawsecret);
         }.bind(this));
         this.latestsecretid = data.latestsecretid;
@@ -127,7 +129,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         $http({
             url: '/secrets',
             method: 'GET',
-            params: {afterid: (this.latestsecretid || 1)}
+            params: {afterid: (this.latestsecretid || 0)}
         }).success(function(data){
             this.load(data);
             callback(data);
