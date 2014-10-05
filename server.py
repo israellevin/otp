@@ -58,6 +58,11 @@ def login():
     login_user(user)
     return redirect(request.values.get('next', url_for('index')))
 
+from misaka import html
+@app.route('/about/')
+def about():
+    with open('README.md') as readme: return html(readme.read())
+
 def jsonable(view):
     secret = view.secret
     jsonable = {
@@ -77,7 +82,7 @@ def jsonable(view):
     if db.View.get(current_user.id, secret.parentid):
         jsonable['parentid'] = secret.parentid
     if view.viewed:
-        jsonable['body'] = secret.body
+        jsonable['body'] = html(secret.body)
     return jsonable
 
 @app.route('/')
