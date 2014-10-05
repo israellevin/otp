@@ -1,22 +1,27 @@
 {% extends "layout.html" %}
 {% block body %}
-<script>
-	function validateForm(){
-		if(document.forms[0][1].value===document.forms[0][2].value) return true;
-		return false;
-	}
-</script>
-
 <img class=logo src=static/img/logo.svg alt=logo>
 <div class=moto>THE ONE TRUE PAGE</div>
-<form method=post onsubmit="return validateForm()">
 {% if request.form['passphrase'] %}
-	<div class=login-message>Welcome new user, please choose a name</div>
+<script>
+	function checkphrase(){
+        return (document.forms[0][1].value === document.forms[0][2].value);
+	}
+    window.onkeyup = function(e){
+        var inp = document.forms[0][1];
+        if(checkphrase()) inp.className = inp.className.replace(
+            /(?:^|\s)invalid(?!\S)/g, ''
+        ); else inp.className += ' invalid';
+    };
+</script>
+<form method=post onsubmit="return checkphrase()">
+	<div class=login-message>New user</div>
 	<input name=name placeholder=Name autofocus>
+    <input name=passphrase class=invalid type=password placeholder='Repeat Passphrase'>
 	<input name=prevpassphrase type=password value="{{request.form['passphrase']}}" disabled>
-    <input name=passphrase type=password placeholder='Repeat Passphrase'>
     <input type=submit>
 {% else %}
+<form method=post>
     <div class=login-message>Speak, friend, and enter</div>
     <input name=passphrase type=password placeholder=Passphrase autofocus>
     <p class=teaser>{{numofsecrets}} secrets shared by {{numofviewers}} viewers await you</p>

@@ -5,13 +5,8 @@ import db
 from werkzeug.exceptions import BadRequest
 from flask import(
         Flask,
-        abort,
         current_app,
-        flash,
-        g,
-        get_flashed_messages,
         json,
-        make_response,
         redirect,
         render_template,
         request,
@@ -50,7 +45,6 @@ def login():
         if user is not None:
             login_user(user)
             return redirect(request.values.get('next', url_for('index')))
-        else: flash('Invalid login')
     return render_template(
         'login.html',
         numofviewers=len(db.Viewer.getall()),

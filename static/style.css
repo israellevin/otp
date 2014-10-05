@@ -12,12 +12,6 @@ body{
     color: red;
 }
 
-/* Messages from the flask server. */
-p.message{
-    background: red;
-    color: white;
-}
-
 .logo{
     display:block;
     margin:10em auto 5em;
@@ -28,17 +22,16 @@ p.message{
     font-size:2em;
     font-family:Sans;
     color:#483737;
-    width:10.4em;
+    text-align: center;
 }
 
-/* Messages in the login form */
 div.login-message{
     color: #d66418;
     padding: 1em;
     background: #CADEEB;
     margin: 2em auto;
-    width: 5.5em;
     border-radius: 1em;
+    text-align: center;
 }
 
 form{
@@ -61,6 +54,10 @@ form input{
 form input[type='submit']{
     height: 2.2em;
     width: 24.1em;
+}
+
+input.invalid{
+    background: pink;
 }
 
 #main{

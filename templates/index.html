@@ -22,7 +22,7 @@
     <div class=col-md-3>
 
         <div id=ripe data-ng-if="ripe.length > 0">
-            <h2>New Threads</h2>
+            <h2>New Ripe Threads</h2>
             <div class=thread data-ng-repeat="thread in ripe" data-ng-click="viewthread(thread)">
                 <h4>from:{{thread.rootsecret.author.name}}</h4>
                 <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
@@ -31,7 +31,7 @@
 
         <div id=viewed data-ng-if="viewed.length > 0">
             <h2>Viewed Threads</h2>
-            <div class=thread data-ng-class="{curthread: data.activethread === thread}" data-ng-repeat="thread in viewed" data-ng-click="data.activethread = thread">
+            <div class=thread data-ng-class="{curthread: data.activethread === thread}" data-ng-repeat="thread in viewed|orderBy:'latestsecretid':true" data-ng-click="data.activethread = thread">
                 <h4>{{thread.name}}</h4>
                 <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
             </div>
@@ -43,7 +43,7 @@
         <h2>Current Thread</h2>
         <h3>{{data.activethread.name}}</h3>
         <div class=secret data-ng-repeat="secret in data.activethread.members.toarray()">
-            <code>{{secret.id}}</code>{{secret.author.name}}: <p data-ng-bind-html="secret.body | markdown"></p>
+            <code>{{secret.id}}</code>{{secret.author.name}}: <p data-ng-bind-html="secret.body|markdown"></p>
         </div>
     </div>
 

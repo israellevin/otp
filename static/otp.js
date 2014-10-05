@@ -113,12 +113,10 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
     // Load a bunch of secrets and viewers and such.
     this.load = function(data){
-        log(data);
         each(data.rawviewers, function(rawviewer){
             this[rawviewer.id] = rawviewer;
         }.bind(this.viewers));
         each(data.rawsecrets, function(rawsecret){
-            log(rawsecret);
             this.add(rawsecret);
         }.bind(this));
         this.latestsecretid = data.latestsecretid;
@@ -166,12 +164,17 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     // Create a thread object from a root secret.
     function Thread(rootsecret){
         this.rootsecret = rootsecret;
+        this.latestsecretid = this.rootsecret.id;
 
+        // FIXME Replace with something more specific than SortDict?
         this.members = new SortDict();
         this.add = function(members){
             each(members, function(member){
                 member.thread = this;
                 this.members.add(member.id, member);
+                if(member.id > this.latestsecretid){
+                    this.latestsecretid = member.id;
+                }
             }.bind(this));
         };
 
