@@ -66,17 +66,10 @@ function SortDict(){
 angular.module('otp', []).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
-
     this.index = new SortDict();
     this.get = function(id){return this.index.get(id);};
     this.keys = function(id){return this.index.keys.slice();};
-
     this.viewers = {};
-    this.viewers.load = function(rawviewers){
-        each(rawviewers, function(rawviewer){
-            this[rawviewer.id] = rawviewer;
-        }.bind(this));
-    };
 
     // Add a secret, linking it to its relatives.
     this.add = function(rawsecret){
@@ -120,7 +113,9 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
 
     // Load a bunch of secrets and viewers and such.
     this.load = function(data){
-        this.viewers.load(data.rawviewers);
+        each(data.rawviewers, function(rawviewer){
+            this[rawviewer.id] = rawviewer;
+        }.bind(this.viewers));
         each(data.rawsecrets, function(rawsecret){
             this.add(rawsecret);
         }.bind(this));
@@ -147,6 +142,13 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         rawviewers: $window.rawviewers,
         latestsecretid: $window.latestsecretid
     });
+
+// A filter for rendering markdown.
+// FIXME Sanitize!
+}]).filter('markdown', ['$sce', '$window', function($sce, $window){
+    return function(markdown){
+        return $sce.trustAsHtml($window.marked(markdown));
+    }
 
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', '$interval', 'secrets', function(
@@ -250,7 +252,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         }
 
         // Add all threaded descendants of rootsecret.
-        this.add(threadsecrets(rootsecret));
+        this.add(threadsecrets(this.rootsecret));
         this.sort();
 
         // Make a flat viewers list.

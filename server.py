@@ -42,26 +42,20 @@ def load_user(userid):
 def login():
     logout_user()
     session.clear()
-    if request.method == 'GET' or 'passphrase' not in request.values:
-        flash('this is what server messages look like');
-        return render_template(
-            'login.html',
-            numofviewers=len(db.Viewer.getall()),
-            numofsecrets=db.Secret.latestid()
+    if request.method == 'POST' and 'passphrase' in request.values:
+        if 'name' in request.values: user = db.Viewer(
+            request.values['name'], request.values['passphrase']
         )
-    if 'name' in request.values:
-        user = db.Viewer(request.values['name'], request.values['passphrase'])
-    else:
-        user = db.Viewer.getbypass(request.values['passphrase'])
-    if user is None:
-        return render_template('login.html')
-    login_user(user)
-    return redirect(request.values.get('next', url_for('index')))
-
-from misaka import html
-@app.route('/about/')
-def about():
-    with open('README.md') as readme: return html(readme.read())
+        else: user = db.Viewer.getbypass(request.values['passphrase'])
+        if user is not None:
+            login_user(user)
+            return redirect(request.values.get('next', url_for('index')))
+        else: flash('Invalid login')
+    return render_template(
+        'login.html',
+        numofviewers=len(db.Viewer.getall()),
+        numofsecrets=db.Secret.latestid()
+    )
 
 def jsonable(view):
     secret = view.secret
@@ -82,7 +76,7 @@ def jsonable(view):
     if db.View.get(current_user.id, secret.parentid):
         jsonable['parentid'] = secret.parentid
     if view.viewed:
-        jsonable['body'] = html(secret.body)
+        jsonable['body'] = secret.body
     return jsonable
 
 @app.route('/')
