@@ -51,6 +51,17 @@ def login():
         numofsecrets=db.Secret.latestid()
     )
 
+@app.route('/about')
+def about():
+    readme = ''
+    with open('README.md') as f: readme = f.read()
+    return render_template(
+        'about.html',
+        readme=readme,
+        numofviewers=len(db.Viewer.getall()),
+        numofsecrets=db.Secret.latestid()
+    )
+
 def jsonable(view):
     secret = view.secret
     jsonable = {

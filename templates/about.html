@@ -1,0 +1,13 @@
+{% extends "layout.html" %}
+{% block body %}
+<script>
+window.onload = function(){
+    document.getElementById('readme').innerHTML = marked({{readme|tojson}});
+};
+</script>
+<img class=logo src="{{url_for('static', filename='img/logo.svg')}}" alt=logo>
+<div style="text-align: center;">
+    <div id=readme></div>
+    <div class=teaser>{{numofsecrets}} secrets shared by {{numofviewers}} viewers await you on this specific server</div>
+</div>
+{% endblock %}

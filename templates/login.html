@@ -1,6 +1,6 @@
 {% extends "layout.html" %}
 {% block body %}
-<img class=logo src=static/img/logo.svg alt=logo>
+<img class=logo src="{{url_for('static', filename='img/logo.svg')}}" alt=logo>
 <div class=moto>THE ONE TRUE PAGE</div>
 {% if request.form['passphrase'] %}
 <script>
