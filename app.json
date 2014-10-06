@@ -1,7 +1,7 @@
 {
     "name": "OTP",
     "description": "A framework for secret-based RPGs",
-    "repository": "https://github.com/israellevin/otp/tree/heroku",
+    "repository": "https://github.com/israellevin/otp",
     "keywords": ["RPG", "game", "sqlalchemy", "flask"],
     "addons": ["heroku-postgresql:hobby-dev"],
     "scripts": {
