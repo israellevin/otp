@@ -23,7 +23,7 @@
 
         <div id=ripe data-ng-if="ripe.length > 0">
             <h2>New Ripe Threads</h2>
-            <div class=thread data-ng-repeat="thread in ripe" data-ng-click="viewthread(thread)">
+            <div class=thread data-ng-repeat="thread in ripe|orderBy:'rootsecret.id'" data-ng-click="viewthread(thread)">
                 <h4>from:{{thread.rootsecret.author.name}}</h4>
                 <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
             </div>
@@ -49,8 +49,8 @@
 
     <div id=viewers class=col-md-3>
         <h2>Viewers</h2>
-        <div class=viewer data-ng-repeat="(id, viewer) in viewers">
-            <code>{{id}}</code>{{viewer.name}}: {{viewer.lastseen}}
+        <div class=viewer data-ng-repeat="(id, viewer) in viewers|dictorderBy:'lastseen':true">
+            <code>{{viewer.id}}</code>{{viewer.name}}: {{viewer.lastseen|date:'short'}}
         </div>
     </div>
 

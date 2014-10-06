@@ -62,8 +62,30 @@ function SortDict(){
     };
 }
 
+// Get that angular magick flowing.
+angular.module('otp', []).
+
+// A filter for rendering markdown.
+// FIXME Sanitize!
+filter('markdown', ['$sce', '$window', function($sce, $window){
+    return function(markdown){
+        return $sce.trustAsHtml($window.marked(markdown));
+    };
+
+// A filter for ordering dictionaries.
+}]).filter('dictorderBy', function(){
+    return function(dict, key, reverse){
+        var sorted = new SortDict();
+        eachval(dict, function(value, id){
+            sorted.add(value[key], value);
+        });
+        sorted = sorted.toarray();
+        if(reverse) return sorted = sorted.reverse();
+        return sorted;
+    };
+
 // A secrets service to serve us the server injected secrets.
-angular.module('otp', []).service('secrets', ['$window', '$http', function(
+}).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
     this.index = new SortDict();
@@ -115,6 +137,7 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
     this.load = function(data){
         each(data.rawviewers, function(rawviewer){
             this[rawviewer.id] = rawviewer;
+            this[rawviewer.id].lastseen = new Date(rawviewer.lastseen);
         }.bind(this.viewers));
         each(data.rawsecrets, function(rawsecret){
             this.add(rawsecret);
@@ -142,13 +165,6 @@ angular.module('otp', []).service('secrets', ['$window', '$http', function(
         rawviewers: $window.rawviewers,
         latestsecretid: $window.latestsecretid
     });
-
-// A filter for rendering markdown.
-// FIXME Sanitize!
-}]).filter('markdown', ['$sce', '$window', function($sce, $window){
-    return function(markdown){
-        return $sce.trustAsHtml($window.marked(markdown));
-    }
 
 // A controller for displaying threads.
 }]).controller('threads', ['$scope', '$interval', 'secrets', function(
