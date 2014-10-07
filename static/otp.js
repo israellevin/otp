@@ -100,20 +100,26 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         secret.service = this;
         secret.id = rawsecret.id;
         secret.time = rawsecret.time;
-
         secret.author = this.viewers[rawsecret.authorid];
-        if(typeof rawsecret.parentid === 'number')
-            secret.parent = this.index.getor(rawsecret.parentid);
-
-        secret.children = map(rawsecret.childids, function(childid){
-            return this.index.getor(childid);
-        }.bind(this));
 
         secret.viewers = {};
         each(Object.keys(rawsecret.viewers), function(key){
             secret.viewers[key] = map(rawsecret.viewers[key], function(id){
                 return this.viewers[id];
             }.bind(this));
+        }.bind(this));
+
+        if(typeof rawsecret.parentid === 'number'){
+            secret.parent = this.index.getor(rawsecret.parentid);
+            if(
+                secret.viewers[secret.id].length === 1 &&
+                secret.viewers[secret.parent.id]
+            ) secret.legitimate = true;
+            else secret.legitimate = false;
+        }
+
+        secret.children = map(rawsecret.childids, function(childid){
+            return this.index.getor(childid);
         }.bind(this));
 
         if(typeof rawsecret.body === 'string'){
@@ -221,17 +227,18 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             var type = 'hidden', parent = null;
             if(this.rootsecret.view === true){
                 parent = this.getparent();
-                if(parent){
+                if(parent && this.rootsecret.legitimate){
                     type = 'subs';
                     parent.add(this.members.toarray());
                 }else{
                     type = 'viewed';
                     this.name = this.getname();
                 }
-            }else if(this.rootsecret.parent){
-                if(this.rootsecret.parent.view === true) type = 'ripe';
-                else type = 'hidden';
-            }else eachval(
+            }else if(
+                this.rootsecret.parent &&
+                this.rootsecret.parent.view === true
+            ) type = 'ripe';
+            else eachval(
                 this.rootsecret.viewers,
                 function(viewerslist, secretid){
                     if(secretid <= this.rootsecret.id){
@@ -267,7 +274,9 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             }
             var members = [secret];
             each(secret.children, function(child){
-                members = members.concat(threadsecrets(child, isunviewed));
+                if(child.legitimate) members = members.concat(
+                    threadsecrets(child, isunviewed)
+                );
             });
             return members;
         }
