@@ -42,7 +42,7 @@
     <div id=secrets class=col-md-3 ng-if="data.activethread">
         <h2>Current Thread</h2>
         <h3>{{data.activethread.name}}</h3>
-        <div class=secret data-ng-repeat="secret in data.activethread.members.toarray()">
+        <div class=secret data-ng-repeat="secret in data.activethread.members.items">
             <code>{{secret.id}}</code>{{secret.author.name}}: <p data-ng-bind-html="secret.body|markdown"></p>
         </div>
     </div>

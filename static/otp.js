@@ -3,6 +3,17 @@ var log  = console.log;
 
 (function(){'use strict';
 
+// Error catcher.
+function typeproof(success, error){
+    try{
+        return success();
+    }catch(e){
+        if(e instanceof TypeError){
+            if(typeof error === 'function') return error();
+        }else throw e;
+    }
+}
+
 // Iterators.
 function each(arr, func){
     for(var idx = 0, len = arr.length; idx < len; idx++){
@@ -23,44 +34,62 @@ function eachval(dictionary, func){
     });
 }
 
-// A dictionary that holds a sorted array of values.
-function SortDict(){
-    this.keys = [];
-    this.dict = {};
-    this.get = function(id){return this.dict[id];};
-    this.getbypos = function(pos){return this.dict[this.keys[pos]];};
+// A sorted set of unique items.
+function SortedSet(keyname){
+    this.items = [];
 
-    function binsearch(arr, val){
-        var minidx = 0, maxidx = arr.length - 1, idx;
-        while(minidx <= maxidx){
-            idx = (minidx + maxidx) / 2 | 0;
-            if(arr[idx] < val) minidx = idx + 1;
-            else maxidx = idx - 1;
+    function binsearch(arr, key){
+        if(arr.length === 0) return 0;
+        var minidx = 0, maxidx = arr.length - 1, mididx, midkey;
+        while(true){
+            mididx = (minidx + maxidx) / 2 | 0;
+            midkey = arr[mididx][keyname];
+            if(key === midkey){
+                return [true, mididx];
+            }else if(key > midkey){
+                minidx = mididx + 1;
+            }else{
+                maxidx = mididx - 1;
+            }
+            if(minidx > maxidx) return [false, minidx];
         }
-        return minidx;
     }
-
-    this.add = function(id, item){
-        if(!this.dict[id]) this.keys.splice(binsearch(this.keys, id), 0, id);
-        return this.dict[id] = item;
+    
+    this.add = function(item){
+        var pos = binsearch(this.items, item[keyname]);
+        if(pos[0]) return this.items[pos[1]] = item;
+        else return this.items.splice(pos[1], 0, item) && item;
     };
 
-    this.getor = function(id){return this.get(id) || this.add(id, {});};
-
-    this.each = function(callback){
-        each(this.keys, function(key){
-            return callback(this.get(key), key);
-        }.bind(this));
+    this.removebykey = function(key){
+        var pos = binsearch(this.items, key);
+        if(pos[0]) this.items.splice(pos[1], 1);
     };
 
-    this.toarray = function(){
-        var arr = [];
-        this.each(function(member){
-            arr.push(member);
-        });
-        return arr;
+    this.keys = function(){
+        return map(this.items, function(item){return item[keyname];});
     };
 }
+
+// A dictionary that holds a sorted array of values.
+function SortedDict(keyname){
+    this.set = new SortedSet(keyname);
+    this.dict = {};
+    this.add = function(item){
+        this.dict[item[keyname]] = this.set.add(item);
+    };
+
+    this.getor = function(key){
+        var item = this.dict[key];
+        if(typeof item === 'undefined'){
+            item = {};
+            item[keyname] = key;
+            this.add(item);
+        }
+        return item;
+    }
+}
+window.dic = SortedDict;
 
 // Get that angular magick flowing.
 angular.module('otp', []).
@@ -74,23 +103,22 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
 
 // A filter for ordering dictionaries.
 }]).filter('dictorderBy', function(){
-    return function(dict, key, reverse){
-        var sorted = new SortDict();
-        eachval(dict, function(value, id){
-            sorted.add(value[key], value);
+    return function(dict, keyname, reverse){
+        var sorted = new SortedSet(keyname);
+        eachval(dict, function(item){
+            sorted.add(item);
         });
-        sorted = sorted.toarray();
-        if(reverse) return sorted = sorted.reverse();
-        return sorted;
+        if(reverse) return sorted.items.reverse();
+        return sorted.items;
     };
 
 // A secrets service to serve us the server injected secrets.
 }).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
-    this.index = new SortDict();
-    this.get = function(id){return this.index.get(id);};
-    this.keys = function(id){return this.index.keys.slice();};
+    this.index = new SortedDict('id');
+    this.get = function(id){return this.index.dict[id];};
+    this.keys = function(){return this.index.set.keys();};
     this.viewers = {};
 
     // Add a secret, linking it to its relatives.
@@ -173,27 +201,32 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     });
 
 // A controller for displaying threads.
-}]).controller('threads', ['$scope', '$interval', 'secrets', function(
-    $scope, $interval, secrets
+}]).controller('threads', ['$scope', '$timeout', 'secrets', function(
+    $scope, $timeout, secrets
 ){
-    $scope.viewed = [];
-    $scope.ripe = [];
-    $scope.hidden = [];
-    $scope.subs = [];
-    $scope.data = {};
-    $scope.viewers = secrets.viewers;
+    var groups = {
+        viewed: new SortedSet('id'),
+        ripe: new SortedSet('id'),
+        hidden: new SortedSet('id'),
+        subs: new SortedSet('id')
+    };
+
+    // FIXME Some debug binds here.
+    window.s = secrets;
+    window.g = groups;
 
     // Create a thread object from a root secret.
     function Thread(rootsecret){
+        this.id = rootsecret.id;
         this.rootsecret = rootsecret;
         this.latestsecretid = this.rootsecret.id;
 
-        // FIXME Replace with something more specific than SortDict?
-        this.members = new SortDict();
+        // FIXME Replace with something more specific than SortedSet?
+        this.members = new SortedSet('id');
         this.add = function(members){
             each(members, function(member){
                 member.thread = this;
-                this.members.add(member.id, member);
+                this.members.add(member);
                 if(member.id > this.latestsecretid){
                     this.latestsecretid = member.id;
                 }
@@ -229,7 +262,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 parent = this.getparent();
                 if(parent && this.rootsecret.legitimate){
                     type = 'subs';
-                    parent.add(this.members.toarray());
+                    parent.add(this.members.items);
                 }else{
                     type = 'viewed';
                     this.name = this.getname();
@@ -257,11 +290,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             var pos;
             if(!this.type || this.type !== type){
                 if(this.type){
-                    pos = $scope[this.type].indexOf(this);
-                    if(pos > -1) $scope[this.type].splice(pos, 1);
+                    groups[this.type].removebykey(this.id);
                 }
                 this.type = type;
-                $scope[type].unshift(this);
+                groups[type].add(this);
             }
         };
 
@@ -296,10 +328,16 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         this.viewers = viewers;
     }
 
+    $scope.viewed = groups.viewed.items;
+    $scope.ripe = groups.ripe.items;
+    $scope.viewers = secrets.viewers;
+    $scope.data = {};
+
+
     // Request all members of a thread and refresh threads when they arrive.
     $scope.viewthread = function(thread){
         var counter = 0;
-        thread.members.each(function(member){
+        each(thread.members.items, function(member){
             counter++;
             member.view(function(newmember){
                 var target, pos;
@@ -316,7 +354,8 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // Pull threads out of a checklist of IDs.
     function threadchecklist(checklist){
         while(checklist.length > 0){
-            new Thread(secrets.get(checklist.shift())).members.each(
+            each(
+                new Thread(secrets.get(checklist.shift())).members.items,
                 function(member){
                     var pos = checklist.indexOf(member.id);
                     if(pos > -1) checklist.splice(pos, 1);
@@ -334,15 +373,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 return rawsecret.id;
             }));
             if(typeof callback === 'function') callback(data);
+            $timeout($scope.getnew, 1000);
         });
     };
-    $interval($scope.getnew, 100000);
-
-    // FIXME Some debug binds here.
-    window.s = secrets;
-    window.v = $scope.viewed;
-    window.r = $scope.ripe;
-    window.h = $scope.hidden;
+    $scope.getnew();
 
     // FIXME find me a place.
     $scope.nojsstyle = 'display: none';
