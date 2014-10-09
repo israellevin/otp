@@ -379,7 +379,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 return rawsecret.id;
             }));
             if(typeof callback === 'function') callback(data);
-            $timeout($scope.getnew, 1000);
+            //$timeout($scope.getnew, 1000);
         });
     };
     $scope.getnew();

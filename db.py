@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Default local db for testing, set the env variable to override.
 dbfilename = 'otp.db'
@@ -227,4 +227,50 @@ class Secret(Base):
         return session.query(cls).count()
 
 if __name__ == '__main__':
+
+    from os.path import isfile
+    if isfile(dbfilename):
+        if 'y' != input('Delete database and create a new one? (y/N): '):
+            from sys import exit
+            exit(0)
+        from os import remove
+        remove(dbfilename)
+
     Base.metadata.create_all(bind=engine)
+
+    # FIXME Testing
+    Viewer('ruby', '1')
+    Viewer('benedict', '2')
+    Viewer('bleys', '3')
+    Viewer('tauv', '4')
+
+    # 1
+    Secret('Hi Ben', 1, parentid=None,
+        viewerids=[2], authparentids=[], authchildids=[]
+    )
+    View.get(2, 1, None, True)
+
+    # 2
+    Secret('Hi Rub', 2, parentid=1,
+        viewerids=[], authparentids=[1], authchildids=[]
+    )
+    View.get(1, 2, None, True)
+
+    # 3
+    Secret('I love honey', 1, parentid=2,
+        viewerids=[], authparentids=[2], authchildids=[]
+    )
+    View.get(2, 3, None, True)
+
+    # 4
+    Secret('Check it out bro', 2, parentid=3,
+        viewerids=[3], authparentids=[], authchildids=[3]
+    )
+
+    # 5
+    Secret('orly', 2, parentid=3,
+        viewerids=[], authparentids=[3], authchildids=[]
+    )
+    View.get(1, 5, None, True)
+
+    session.commit()
