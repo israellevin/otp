@@ -1,4 +1,4 @@
-#!/usr/bin/python3
+#!/usr/bin/env python3
 
 # Default local db for testing, set the env variable to override.
 dbfilename = 'otp.db'
