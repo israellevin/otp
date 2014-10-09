@@ -111,15 +111,6 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         return sorted.items;
     };
 
-// FIXME Why can't I just use the builtin filter?
-// A filter for showing seconds since epoc as local time.
-}).filter('localdatetime', function(){
-    return function(input){
-        var d = new Date(0);
-        d.setUTCSeconds(input);
-        return d.toUTCString();
-    };
-
 // A secrets service to serve us the server injected secrets.
 }).service('secrets', ['$window', '$http', function(
     $window, $http

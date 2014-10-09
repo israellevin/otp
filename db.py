@@ -73,10 +73,8 @@ class Viewer(Base, UserMixin):
         try: viewers = session.query(cls.id, cls.name, cls.lastseen).all()
         except exc.SQLAlchemyError: return []
         if lastupdate is not None:
-
             # JavaScript consistently loses a microsecond.
             lastupdate = datetime.utcfromtimestamp(float(lastupdate) + 0.000001)
-            for v in viewers: print(lastupdate, v.lastseen)
             viewers = filter(lambda x: x.lastseen > lastupdate, viewers)
         return [
             {
