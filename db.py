@@ -30,6 +30,8 @@ from sqlalchemy import(
 from sqlalchemy.types import UnicodeText, DateTime, LargeBinary
 from sqlalchemy.orm import relationship
 from datetime import datetime
+epoc = datetime(1970,1,1)
+def jsontime(time): return (time - epoc).total_seconds()
 
 from flask_login import UserMixin
 from hashlib import sha256
@@ -46,7 +48,7 @@ class Viewer(Base, UserMixin):
         self.passphrasehash = sha256(str.encode(
             SALT + passphrase
         )).hexdigest()
-        self.lastseen = datetime.now()
+        self.lastseen = datetime.utcnow()
         session.commit()
 
     def __repr__(self):
@@ -67,12 +69,22 @@ class Viewer(Base, UserMixin):
         except exc.SQLAlchemyError: return None
 
     @classmethod
-    def getall(cls):
-        try: return [
-            {'id': viewer[0], 'name': viewer[1], 'lastseen': viewer[2]}
-            for viewer in session.query(cls.id, cls.name, cls.lastseen).all()
-        ]
+    def getall(cls, lastupdate=None):
+        try: viewers = session.query(cls.id, cls.name, cls.lastseen).all()
         except exc.SQLAlchemyError: return []
+        if lastupdate is not None:
+
+            # JavaScript consistently loses a microsecond.
+            lastupdate = datetime.utcfromtimestamp(float(lastupdate) + 0.000001)
+            for v in viewers: print(lastupdate, v.lastseen)
+            viewers = filter(lambda x: x.lastseen > lastupdate, viewers)
+        return [
+            {
+                'id': viewer[0],
+                'name': viewer[1],
+                'lastseen': jsontime(viewer[2])
+            } for viewer in viewers
+        ]
 
 class View(Base):
     __tablename__ = 'views'
@@ -108,7 +120,7 @@ class View(Base):
 
         if viewed is not None:
             if type(viewed) is datetime: view.viewed = viewed
-            else: view.viewed = datetime.now()
+            else: view.viewed = datetime.utcnow()
             view.viewer.lastseen = view.viewed
             session.commit()
         return view
@@ -159,7 +171,7 @@ class Secret(Base):
         self, body, authorid,
         parentid=None, viewerids=[], authparentids=[], authchildids=[]
     ):
-        self.time = datetime.now()
+        self.time = datetime.utcnow()
         self.body, self.authorid = body, authorid
         if parentid is not None: self.parentid = parentid
         session.flush()

@@ -66,7 +66,7 @@ def jsonable(view):
     secret = view.secret
     jsonable = {
         'id': secret.id,
-        'time': secret.time,
+        'time': db.jsontime(secret.time),
         'authorid': secret.authorid,
         'childids': [
             child.id
@@ -115,9 +115,11 @@ def getsecrets():
         'rawsecrets': [
             jsonable(view)
             for view in current_user.views
-            if view.secret.id > int(request.values.get('afterid', 1))
+            if view.secret.id > int(request.values.get('afterid'))
         ],
-        'rawviewers': db.Viewer.getall(),
+        'rawviewers': db.Viewer.getall(
+            request.values['lastupdate']
+        ),
         'latestsecretid': db.Secret.latestid()
     }
 

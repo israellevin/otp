@@ -35,15 +35,15 @@ function eachval(dictionary, func){
 }
 
 // A sorted set of unique items.
-function SortedSet(keyname){
+function SortedSet(keyname, sortkeyname){
     this.items = [];
 
-    function binsearch(arr, key){
-        if(arr.length === 0) return 0;
-        var minidx = 0, maxidx = arr.length - 1, mididx, midkey;
+    function bindexof(sortedarray, key){
+        if(sortedarray.length === 0) return [false, 0];
+        var minidx = 0, maxidx = sortedarray.length - 1, mididx, midkey;
         while(true){
             mididx = (minidx + maxidx) / 2 | 0;
-            midkey = arr[mididx][keyname];
+            midkey = sortedarray[mididx][keyname];
             if(key === midkey){
                 return [true, mididx];
             }else if(key > midkey){
@@ -54,15 +54,15 @@ function SortedSet(keyname){
             if(minidx > maxidx) return [false, minidx];
         }
     }
-    
+
     this.add = function(item){
-        var pos = binsearch(this.items, item[keyname]);
-        if(pos[0]) return this.items[pos[1]] = item;
+        var pos = bindexof(this.items, item[keyname]);
+        if(pos[0] === true) return this.items[pos[1]] = item;
         else return this.items.splice(pos[1], 0, item) && item;
     };
 
     this.removebykey = function(key){
-        var pos = binsearch(this.items, key);
+        var pos = bindexof(this.items, key);
         if(pos[0]) this.items.splice(pos[1], 1);
     };
 
@@ -89,7 +89,6 @@ function SortedDict(keyname){
         return item;
     }
 }
-window.dic = SortedDict;
 
 // Get that angular magick flowing.
 angular.module('otp', []).
@@ -110,6 +109,15 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         });
         if(reverse) return sorted.items.reverse();
         return sorted.items;
+    };
+
+// FIXME Why can't I just use the builtin filter?
+// A filter for showing seconds since epoc as local time.
+}).filter('localdatetime', function(){
+    return function(input){
+        var d = new Date(0);
+        d.setUTCSeconds(input);
+        return d.toUTCString();
     };
 
 // A secrets service to serve us the server injected secrets.
@@ -170,9 +178,12 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // Load a bunch of secrets and viewers and such.
     this.load = function(data){
         each(data.rawviewers, function(rawviewer){
-            this[rawviewer.id] = rawviewer;
-            this[rawviewer.id].lastseen = new Date(rawviewer.lastseen);
-        }.bind(this.viewers));
+            if(rawviewer.lastseen > this.lastupdate){
+                this.lastupdate = rawviewer.lastseen;
+            }
+            this.viewers[rawviewer.id] = rawviewer;
+            this.viewers[rawviewer.id].lastseen *= 1000;
+        }.bind(this));
         each(data.rawsecrets, function(rawsecret){
             this.add(rawsecret);
         }.bind(this));
@@ -184,7 +195,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         $http({
             url: '/secrets',
             method: 'GET',
-            params: {afterid: (this.latestsecretid || 0)}
+            params: {
+                afterid: this.latestsecretid,
+                lastupdate: this.lastupdate
+            }
         }).success(function(data){
             this.load(data);
             callback(data);
@@ -194,6 +208,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     };
 
     // Load the secrets the server injected into the page.
+    this.lastupdate = 0;
     this.load({
         rawsecrets: $window.rawsecrets,
         rawviewers: $window.rawviewers,
@@ -344,7 +359,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 counter--;
                 if(counter === 0){
                     thread.sort();
-                    each($scope.hidden, function(thread){thread.sort();});
+                    each(groups.hidden.items, function(thread){thread.sort();});
                     $scope.data.activethread = thread.rootsecret.thread;
                 }
             });

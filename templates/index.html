@@ -50,7 +50,7 @@
     <div id=viewers class=col-md-3>
         <h2>Viewers</h2>
         <div class=viewer data-ng-repeat="(id, viewer) in viewers|dictorderBy:'lastseen':true">
-            <code>{{viewer.id}}</code>{{viewer.name}}: {{viewer.lastseen|date:'short'}}
+            <code>{{viewer.id}}</code>{{viewer.name}}: {{viewer.lastseen|date:'medium'}}
         </div>
     </div>
 
