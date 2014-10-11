@@ -14,7 +14,7 @@
 </div>
 
 {% raw %}
-<div data-ng-app=otp data-ng-controller=threads id=main>
+<div data-ng-app=otp data-ng-controller=threads data-ng-cloak id=main>
     <div id=nojs style="{{nojsstyle}}">
         You must have JavaScript turned off.
     </div>
@@ -24,7 +24,7 @@
         <div id=ripe data-ng-if="ripe.length > 0">
             <h2>New Ripe Threads</h2>
             <div class=thread data-ng-repeat="thread in ripe|orderBy:'rootsecret.id'" data-ng-click="viewthread(thread)">
-                <h4>from:{{thread.rootsecret.author.name}}</h4>
+                <h4><code>{{thread.rootsecret.id}}</code>from:{{thread.rootsecret.author.name}}</h4>
                 <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
             </div>
         </div>
