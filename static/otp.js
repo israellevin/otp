@@ -34,8 +34,8 @@ function eachval(dictionary, func){
     });
 }
 
-// A sorted set of unique items.
-function SortedSet(keyname, sortkeyname){
+// A "relatively thread safe" sorted set of unique items.
+function SortedSet(keyname){
     this.items = [];
 
     function bindexof(sortedarray, key){
@@ -68,6 +68,13 @@ function SortedSet(keyname, sortkeyname){
 
     this.keys = function(){
         return map(this.items, function(item){return item[keyname];});
+    };
+
+    this.each = function(func){
+        each(this.keys(), function(key){
+            var pos = bindexof(this, key);
+            if(pos[0]) return func(this[pos[1]]);
+        }.bind(this.items));
     };
 }
 
@@ -112,6 +119,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     };
 
 // A secrets service to serve us the server injected secrets.
+// TODO Separate viewers service?
 }).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
@@ -121,6 +129,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     this.viewers = {};
 
     // Add a secret, linking it to its relatives.
+    // FIXME A bit too long for my taste.
     this.add = function(rawsecret){
         var secret = this.index.getor(rawsecret.id);
 
@@ -129,19 +138,29 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         secret.time = rawsecret.time;
         secret.author = this.viewers[rawsecret.authorid];
 
-        secret.viewers = {};
-        each(Object.keys(rawsecret.viewers), function(key){
-            secret.viewers[key] = map(rawsecret.viewers[key], function(id){
-                return this.viewers[id];
+        secret.viewers = {
+            maincast: new SortedSet('id'),
+            peepers: new SortedSet('id')
+        };
+        secret.authparents = {};
+        eachval(rawsecret.viewers, function(rawviewerslist, authparentid){
+            var dictlist = new SortedSet('id');
+            var flatlist = secret.viewers.peepers;
+            if(secret.id >= authparentid){
+                flatlist = secret.viewers.maincast;
+                if(rawviewerslist.indexOf(uid) > -1) secret.amimaincast = true;
+            }
+            each(rawviewerslist, function(rawviewerid){
+                dictlist.add(flatlist.add(this.viewers[rawviewerid]));
             }.bind(this));
+            secret.authparents[authparentid] = dictlist;
         }.bind(this));
 
         if(typeof rawsecret.parentid === 'number'){
             secret.parent = this.index.getor(rawsecret.parentid);
-            if(
-                secret.viewers[secret.id].length === 1 &&
-                secret.viewers[secret.parent.id]
-            ) secret.legitimate = true;
+
+            // Legitimacy check, since not all children are born alike.
+            if(secret.viewers[secret.parent.id]) secret.legitimate = true;
             else secret.legitimate = false;
         }
 
@@ -149,9 +168,14 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             return this.index.getor(childid);
         }.bind(this));
 
+        secret.authchildren = map(rawsecret.authchildids, function(authchildid){
+            return this.index.getor(authchildid);
+        }.bind(this));
+
         if(typeof rawsecret.body === 'string'){
             secret.body = rawsecret.body;
             secret.view = true;
+
         // Prepare a function to fetch the unviewed secret from the server.
         }else secret.view = function(callback){
             $http({
@@ -226,8 +250,11 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         this.id = rootsecret.id;
         this.rootsecret = rootsecret;
         this.latestsecretid = this.rootsecret.id;
+        this.viewers = {
+            maincast: new SortedSet('id'),
+            peepers: new SortedSet('id')
+        };
 
-        // FIXME Replace with something more specific than SortedSet?
         this.members = new SortedSet('id');
         this.add = function(members){
             each(members, function(member){
@@ -236,18 +263,26 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 if(member.id > this.latestsecretid){
                     this.latestsecretid = member.id;
                 }
+                each(['maincast', 'peepers'], function(listkey){
+                    member.viewers[listkey].each(function(viewer){
+                        this.viewers[listkey].add(viewer);
+                    }.bind(this));
+                }.bind(this));
             }.bind(this));
         };
 
         // Get a thread's name.
         this.getname = function(){
+            var name = this.rootsecret.body;
+            if(name.length <= 20) return name;
             try{
-                return this.rootsecret.body.match(/^[^\n]{0,20}($|[\n\s])/)[0];
+                name = name.match(/^[^\n]{0,19}($|[\n\s])/)[0];
             }catch(e){
                 if(e instanceof TypeError){
-                    return this.rootsecret.body.slice(0,19) + '…';
+                    name = name.slice(0, 19);
                 }else throw e;
             }
+            return name + '…';
         };
 
         // Get a thread's parent thread, if it exists.
@@ -274,20 +309,14 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                     this.name = this.getname();
                 }
             }else if(
-                this.rootsecret.parent &&
-                this.rootsecret.parent.view === true
+                this.rootsecret.amimaincast ||
+                (this.rootsecret.parent && this.rootsecret.parent.view === true)
             ) type = 'ripe';
             else eachval(
-                this.rootsecret.viewers,
+                this.rootsecret.authparents,
                 function(viewerslist, secretid){
-                    if(secretid <= this.rootsecret.id){
-                        if(viewerslist.indexOf(secrets.viewers[uid]) > -1){
-                            return (type = 'ripe') && false;
-                        }
-                    }else{
-                        if(secrets.get(secretid).view === true){
-                            return (type = 'ripe') && false;
-                        }
+                    if(secrets.get(secretid).view === true){
+                        return (type = 'ripe') && false;
                     }
                 }.bind(this)
             );
@@ -322,16 +351,6 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         // Add all threaded descendants of rootsecret.
         this.add(threadsecrets(this.rootsecret));
         this.sort();
-
-        // Make a flat viewers list.
-        // TODO aggregate viewers from all members?
-        var viewers = [];
-        eachval(this.rootsecret.viewers, function(viewerids){
-            each(viewerids, function(viewerid){
-                if(viewers.indexOf(viewerid) < 0) viewers.push(viewerid);
-            });
-        });
-        this.viewers = viewers;
     }
 
     $scope.viewed = groups.viewed.items;
@@ -343,14 +362,14 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // Request all members of a thread and refresh threads when they arrive.
     $scope.viewthread = function(thread){
         var counter = 0;
-        each(thread.members.items, function(member){
+        thread.members.each(function(member){
             counter++;
             member.view(function(newmember){
                 var target, pos;
                 counter--;
                 if(counter === 0){
                     thread.sort();
-                    each(groups.hidden.items, function(thread){thread.sort();});
+                    groups.hidden.each(function(nthread){nthread.sort();});
                     $scope.data.activethread = thread.rootsecret.thread;
                 }
             });
@@ -360,8 +379,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // Pull threads out of a checklist of IDs.
     function threadchecklist(checklist){
         while(checklist.length > 0){
-            each(
-                new Thread(secrets.get(checklist.shift())).members.items,
+            new Thread(secrets.get(checklist.shift())).members.each(
                 function(member){
                     var pos = checklist.indexOf(member.id);
                     if(pos > -1) checklist.splice(pos, 1);
@@ -379,7 +397,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 return rawsecret.id;
             }));
             if(typeof callback === 'function') callback(data);
-            $timeout($scope.getnew, 1000);
+            //$timeout($scope.getnew, 1000);
         });
     };
     $scope.getnew();
