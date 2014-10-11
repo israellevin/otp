@@ -34,8 +34,8 @@ function eachval(dictionary, func){
     });
 }
 
-// A sorted set of unique items.
-function SortedSet(keyname, sortkeyname){
+// A "relatively thread safe" sorted set of unique items.
+function SortedSet(keyname){
     this.items = [];
 
     function bindexof(sortedarray, key){
@@ -68,6 +68,13 @@ function SortedSet(keyname, sortkeyname){
 
     this.keys = function(){
         return map(this.items, function(item){return item[keyname];});
+    };
+
+    this.each = function(func){
+        each(this.keys(), function(key){
+            var pos = bindexof(this, key);
+            if(pos[0]) return func(this[pos[1]]);
+        }.bind(this.items));
     };
 }
 
@@ -112,6 +119,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     };
 
 // A secrets service to serve us the server injected secrets.
+// TODO Separate viewers service?
 }).service('secrets', ['$window', '$http', function(
     $window, $http
 ){
@@ -136,12 +144,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             }.bind(this));
         }.bind(this));
 
+        // Legitimacy check, since not all children are born alike.
         if(typeof rawsecret.parentid === 'number'){
             secret.parent = this.index.getor(rawsecret.parentid);
-            if(
-                secret.viewers[secret.id].length === 1 &&
-                secret.viewers[secret.parent.id]
-            ) secret.legitimate = true;
+            if(secret.viewers[secret.parent.id]) secret.legitimate = true;
             else secret.legitimate = false;
         }
 
@@ -261,6 +267,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             }
         }
 
+        // FIXME Refactor this shit so it will not be so fucking very long so much and also make it work properly with nested ripening.
         // Sort a thread as viewed, ripe, hidden or subthread.
         this.sort = function(){
             var type = 'hidden', parent = null;
@@ -277,6 +284,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 this.rootsecret.parent &&
                 this.rootsecret.parent.view === true
             ) type = 'ripe';
+            // FIXME Externelize, or move to add.
             else eachval(
                 this.rootsecret.viewers,
                 function(viewerslist, secretid){
@@ -350,7 +358,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 counter--;
                 if(counter === 0){
                     thread.sort();
-                    each(groups.hidden.items, function(thread){thread.sort();});
+                    groups.hidden.each(function(nthread){nthread.sort();});
                     $scope.data.activethread = thread.rootsecret.thread;
                 }
             });
@@ -360,6 +368,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // Pull threads out of a checklist of IDs.
     function threadchecklist(checklist){
         while(checklist.length > 0){
+            // FIXME use SortedSet's each.
             each(
                 new Thread(secrets.get(checklist.shift())).members.items,
                 function(member){
