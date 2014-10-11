@@ -191,17 +191,19 @@ class Secret(Base):
             View.get(viewer.id, self.id, False)
         for child in self.authchildren: child.reveal(viewers)
 
-    def knownviewers(self, viewer, ignore=None, lastauth=None):
+    def knownviewers(self, viewer, ignore=None, lastauth=None, proxy=None):
         viewers = {}
         if ignore is None: ignore = [self]
+        elif self in ignore: return viewers
         else:
-            if self in ignore: return viewers
+            if len(ignore) == 1: proxy = self
             ignore.append(self)
 
-        if View.get(viewer.id, self.id): lastauth = self
-        elif lastauth is None: return viewers
-
-        viewers[lastauth.id] = set(self.personalviewers)
+        view = View.get(viewer.id, self.id)
+        if View: lastauth = self
+        viewers[lastauth.id if proxy is None else proxy.id] = set(
+            self.personalviewers
+        )
 
         for authparent in self.authparents:
             if (
@@ -209,7 +211,7 @@ class Secret(Base):
                 (authparent.id > self.id and viewer in authparent.viewers)
             ):
                 for secretid, viewerlist in authparent.knownviewers(
-                    viewer, ignore, lastauth
+                    viewer, ignore, lastauth, proxy
                 ).items():
                     viewers[secretid] = (
                         viewerlist.union(viewers[secretid])
@@ -239,10 +241,10 @@ if __name__ == '__main__':
     Base.metadata.create_all(bind=engine)
 
     # FIXME Testing
-    Viewer('ruby', '1')
+    ruby = Viewer('ruby', '1')
     Viewer('benedict', '2')
     Viewer('bleys', '3')
-    Viewer('tauv', '4')
+    tauv = Viewer('tauv', '4')
 
     # 1
     Secret('Hi Ben', 1, parentid=None,
@@ -263,14 +265,37 @@ if __name__ == '__main__':
     View.get(2, 3, None, True)
 
     # 4
+    Secret('orly', 2, parentid=3,
+        viewerids=[], authparentids=[3], authchildids=[]
+    )
+    View.get(1, 4, None, True)
+
+    # 5
     Secret('Check it out bro', 2, parentid=3,
         viewerids=[3], authparentids=[], authchildids=[3]
     )
 
-    # 5
-    Secret('orly', 2, parentid=3,
-        viewerids=[], authparentids=[3], authchildids=[]
+    # 6
+    six = Secret('tauvs secret 6', 4, parentid=None,
+        viewerids=[], authparentids=[], authchildids=[]
     )
-    View.get(1, 5, None, True)
+
+    # 7
+    Secret('tauvs secret 7', 4, parentid=None,
+        viewerids=[], authparentids=[], authchildids=[]
+    )
+
+    # 8
+    Secret('tauv reveals secret 6 to himself', 4, parentid=6,
+        viewerids=[], authparentids=[], authchildids=[6]
+    )
+
+    # 9
+    Secret('tauv reveals secret 7 and 8(tauv reveals secret 6 to himself) to ruby', 4, parentid=None,
+        viewerids=[1], authparentids=[], authchildids=[7, 8]
+    )
 
     session.commit()
+
+    print(six.knownviewers(ruby))
+
