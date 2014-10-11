@@ -76,7 +76,8 @@ def jsonable(view):
         'viewers': {
             group: [viewer.id for viewer in viewers]
             for group, viewers in secret.knownviewers(current_user).items()
-        }
+        },
+        'authchildids': [authchild.id for authchild in secret.authchildren]
     }
     if db.View.get(current_user.id, secret.parentid):
         jsonable['parentid'] = secret.parentid

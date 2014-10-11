@@ -155,6 +155,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             return this.index.getor(childid);
         }.bind(this));
 
+        secret.authchildren = map(rawsecret.authchildids, function(authchildid){
+            return this.index.getor(authchildid);
+        }.bind(this));
+
         if(typeof rawsecret.body === 'string'){
             secret.body = rawsecret.body;
             secret.view = true;
