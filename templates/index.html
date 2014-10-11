@@ -25,7 +25,8 @@
             <h2>New Ripe Threads</h2>
             <div class=thread data-ng-repeat="thread in ripe|orderBy:'rootsecret.id'" data-ng-click="viewthread(thread)">
                 <h4><code>{{thread.rootsecret.id}}</code>from:{{thread.rootsecret.author.name}}</h4>
-                <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
+                <p data-ng-repeat="viewer in thread.viewers.maincast.items">{{viewer.name}}</p>
+                <p data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}}</p>
             </div>
         </div>
 
@@ -33,7 +34,8 @@
             <h2>Viewed Threads</h2>
             <div class=thread data-ng-class="{curthread: data.activethread === thread}" data-ng-repeat="thread in viewed|orderBy:'latestsecretid':true" data-ng-click="data.activethread = thread">
                 <h4>{{thread.name}}</h4>
-                <p data-ng-repeat="viewer in thread.viewers">{{viewer.name}}</p>
+                <p data-ng-repeat="viewer in thread.viewers.maincast.items">{{viewer.name}}</p>
+                <p data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}}</p>
             </div>
         </div>
 
