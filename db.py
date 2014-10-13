@@ -229,6 +229,4 @@ class Secret(Base):
         return session.query(cls).count()
 
 if __name__ == '__main__':
-
-    from os.path import isfile
     Base.metadata.create_all(bind=engine)

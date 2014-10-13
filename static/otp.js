@@ -157,7 +157,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             secret.parent = this.index.getor(rawsecret.parentid);
 
             // Legitimacy check, since not all children are born alike.
-            if(secret.viewers[secret.parent.id]) secret.legitimate = true;
+            if(secret.authparents[secret.parent.id]) secret.legitimate = true;
             else secret.legitimate = false;
         }
 
