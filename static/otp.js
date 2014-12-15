@@ -1,3 +1,6 @@
+// FIXME debug.
+var log  = console.log;
+
 (function(){'use strict';
 
 // Error catcher.
@@ -238,6 +241,10 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         subs: new SortedSet('id')
     };
 
+    // FIXME Some debug binds here.
+    window.s = secrets;
+    window.g = groups;
+
     // Create a thread object from a root secret.
     function Thread(rootsecret){
         this.id = rootsecret.id;
@@ -390,7 +397,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
                 return rawsecret.id;
             }));
             if(typeof callback === 'function') callback(data);
-            $timeout($scope.getnew, 1000);
+            //$timeout($scope.getnew, 1000);
         });
     };
     $scope.getnew();
