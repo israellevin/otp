@@ -315,7 +315,8 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
             else eachval(
                 this.rootsecret.authparents,
                 function(viewerslist, secretid){
-                    if(secrets.get(secretid).view === true){
+                    var secret = secrets.get(secretid);
+                    if(secret && secret.view === true){
                         return (type = 'ripe') && false;
                     }
                 }.bind(this)
