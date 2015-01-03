@@ -8,6 +8,15 @@
 </script>
 <script src="{{url_for('static', filename='angular.min.js')}}"></script>
 <script src="{{url_for('static', filename='otp.js')}}"></script>
+<!--
+<script src="{{url_for('static', filename='tinymce/tinymce.min.js')}}"></script>
+<script type="text/javascript">
+tinymce.init({
+    selector: "textarea",
+    width : 300
+ });
+</script>
+-->
 
 <div>
     <a class=logout href="{{url_for('login')}}">sign out [{{current_user.name}}]</a>
@@ -19,33 +28,82 @@
         You must have JavaScript turned off.
     </div>
 
-    <div class=col-md-3>
+    <div class="col-md-3 left-col">
 
-        <div id=ripe data-ng-if="ripe.length > 0">
-            <h2>New Ripe Threads</h2>
+        <input id='ss' type=button value="Start Somthing" data-ng-click="newThread()" class="nav-secrets button">
+        <div id=ripe data-ng-if="ripe.length > 0" class="nav-secrets">
+            <h2>News</h2>
             <div class=thread data-ng-repeat="thread in ripe|orderBy:'rootsecret.id'" data-ng-click="viewthread(thread)">
                 <h4><code>{{thread.rootsecret.id}}</code>from:{{thread.rootsecret.author.name}}</h4>
-                <p data-ng-repeat="viewer in thread.viewers.maincast.items">{{viewer.name}}</p>
-                <p data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}}</p>
+                <span data-ng-repeat="viewer in thread.viewers.maincast.items">{{viewer.name}} /</span>
+                <span data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}} /</span>
             </div>
         </div>
 
-        <div id=viewed data-ng-if="viewed.length > 0">
-            <h2>Viewed Threads</h2>
+        <div id=viewed data-ng-if="viewed.length > 0" class="nav-secrets">
+            <h2>Old News</h2>
             <div class=thread data-ng-class="{curthread: data.activethread === thread}" data-ng-repeat="thread in viewed|orderBy:'latestsecretid':true" data-ng-click="data.activethread = thread">
                 <h4>{{thread.name}}</h4>
-                <p data-ng-repeat="viewer in thread.viewers.maincast.items">{{viewer.name}}</p>
-                <p data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}}</p>
+                <span data-ng-repeat="viewer in thread.viewers.maincast.items"> {{viewer.name}} /</span>
+                <span data-ng-repeat="viewer in thread.viewers.peepers.items" style="color: grey">{{viewer.name}} /</span>
+                <span
+                    data-ng-repeat="viewer in thread.viewers.peepers.items"
+                    data-ng-if="-1 === thread.viewers.maincast.items.indexOf(viewer)"
+                    style="color: red">{{viewer.name}} /
+                </span>
             </div>
         </div>
 
     </div>
 
-    <div id=secrets class=col-md-3 ng-if="data.activethread">
-        <h2>Current Thread</h2>
-        <h3>{{data.activethread.name}}</h3>
-        <div class=secret data-ng-repeat="secret in data.activethread.members.items">
-            <code>{{secret.id}}</code>{{secret.author.name}}: <p data-ng-bind-html="secret.body|markdown"></p>
+    <div id=secrets class=col-md-6>
+        <div ng-if="data.activethread">
+            <h3>{{data.activethread.name}}</h3>
+            <div class='read-area'>
+                <div class=secret data-ng-repeat="secret in data.activethread.members.items">
+                    <code>{{secret.id}}</code>{{secret.author.name}}: <p  data-ng-bind-html="secret.body|markdown"></p>
+                    <span class=bastard
+                        data-ng-repeat="child in secret.authchildren"
+                        data-ng-if="-1 === secret.childrenids.indexOf(child.id)"
+                    >
+                        <span class=linked-secret ng-click="data.activethread = child.thread">+ {{child.thread.name}}</span>
+                    </span>
+                    <span class=bastard
+                        data-ng-repeat="authparentid in secret.authparents|dictkeys|parseintarray"
+                        data-ng-if="false === secret.thread.members.getbykey(authparentid)"
+                        data-ng-init="authparent = getsecret(authparentid)"
+                    >
+                        <span class=linked-secret ng-click="data.activethread = authparent.thread">+ {{authparent.thread.name}}</span>
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div id=compose data-ng-controller=composer>
+            <div ng-if="data.activethread">Replay to: {{replayToThread()}}</div>
+            <div ng-if="data.activethread"><div data-ng-repeat="viewer in data.activethread.viewers.maincast.items">
+                <div>{{viewer.name}}</div>
+            </div></div>
+            <!--
+            parentid:
+            <input type=text data-ng-model=parentid>
+            add authparentid:
+            <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
+            <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
+            -->
+
+            <textarea data-ng-model=body placeholder="What say you?"></textarea>
+            <div class=editor-btn>
+                add authchildid:
+                <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
+                <ul><li data-ng-repeat="authchildid in authchildren" data-ng-click="authchildren.splice(this.$index, 1)">{{authchildid}}</li></ul>
+            </div>
+            <div class=editor-btn>
+                add viewer:
+                <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()" >
+                <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)" >{{viewerid}}</li></ul>
+            </div>
+            <input type=button value=send data-ng-click="post()" class=editor-btn>
+            <input type=button value=getnew data-ng-click="getnew()" class=editor-btn>
         </div>
     </div>
 
@@ -57,22 +115,6 @@
     </div>
 
     <div class=col-md-3>
-        <div id=compose data-ng-controller=composer class=col-md-2>
-            parentid:
-            <input type=text data-ng-model=parentid>
-            add authparentid:
-            <input type=text data-ng-model=authparentid data-ng-keypress="$event.which === 13 && addauthparent()">
-            <ul><li data-ng-repeat="authparentid in authparents" data-ng-click="authparents.splice(this.$index, 1)">{{authparentid}}</li></ul>
-            add authchildid:
-            <input type=text data-ng-model=authchildid data-ng-keypress="$event.which === 13 && addauthchild()">
-            <ul><li data-ng-repeat="authchildid in authchildren" data-ng-click="authchildren.splice(this.$index, 1)">{{authchildid}}</li></ul>
-            add viewer:
-            <input type=text data-ng-model=viewerid data-ng-keypress="$event.which === 13 && addviewer()">
-            <ul><li data-ng-repeat="viewerid in viewers" data-ng-click="viewers.splice(this.$index, 1)">{{viewerid}}</li></ul>
-            <textarea data-ng-model=body></textarea>
-            <input type=button value=send data-ng-click="post()">
-            <input type=button value=getnew data-ng-click="getnew()">
-        </div>
     </div>
 </div>
 {% endraw %}

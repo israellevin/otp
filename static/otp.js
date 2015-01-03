@@ -61,6 +61,12 @@ function SortedSet(keyname){
         else return this.items.splice(pos[1], 0, item) && item;
     };
 
+    this.getbykey = function(key){
+        var pos = bindexof(this.items, key);
+        if(pos[0]) return this.items[pos[1]];
+        return false;
+    };
+
     this.removebykey = function(key){
         var pos = bindexof(this.items, key);
         if(pos[0]) this.items.splice(pos[1], 1);
@@ -107,8 +113,16 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         return $sce.trustAsHtml($window.marked(markdown));
     };
 
+// A filter for converting an array of strings to integers.
+}]).filter('parseintarray', function(){
+    return function(arr){
+        return map(arr, function(str){
+            return parseInt(str, 10);
+        });
+    };
+
 // A filter for ordering dictionaries.
-}]).filter('dictorderBy', function(){
+}).filter('dictorderBy', function(){
     return function(dict, keyname, reverse){
         var sorted = new SortedSet(keyname);
         eachval(dict, function(item){
@@ -116,6 +130,16 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         });
         if(reverse) return sorted.items.reverse();
         return sorted.items;
+    };
+
+// A filter for repeating dictionary keys.
+}).filter('dictkeys', function(){
+    return function(dict){
+        var items = [];
+        eachval(dict, function(item, key){
+            items.push(key);
+        });
+        return items;
     };
 
 // A secrets service to serve us the server injected secrets.
@@ -137,6 +161,7 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         secret.id = rawsecret.id;
         secret.time = rawsecret.time;
         secret.author = this.viewers[rawsecret.authorid];
+        secret.childrenids = rawsecret.childids;
 
         secret.viewers = {
             maincast: new SortedSet('id'),
@@ -244,6 +269,8 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // FIXME Some debug binds here.
     window.s = secrets;
     window.g = groups;
+    window.ss = $scope;
+
 
     // Create a thread object from a root secret.
     function Thread(rootsecret){
@@ -357,8 +384,8 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     $scope.viewed = groups.viewed.items;
     $scope.ripe = groups.ripe.items;
     $scope.viewers = secrets.viewers;
+    $scope.getsecret = secrets.get.bind(secrets);
     $scope.data = {};
-
 
     // Request all members of a thread and refresh threads when they arrive.
     $scope.viewthread = function(thread){
@@ -406,10 +433,25 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
     // FIXME find me a place.
     $scope.nojsstyle = 'display: none';
 
+     //Start New 
+    $scope.newThread=function(){
+        $scope.data.activethread=null;
+    }
+
+   
+
 // A controller for composing secrets.
 }]).controller('composer', ['$scope', '$http', 'secrets', function(
     $scope, $http, secrets
 ){
+
+     //Get thread name for "replay to"
+    $scope.replayToThread=function(){
+        //$scope.data.activethread.members.items[0];
+        return $scope.data.activethread.getname($scope.data.activethread.rootsecret.id)
+
+    }
+
     // FIXME directivise this shit. Or maybe just let G do it properly.
     $scope.authparents = [];
     $scope.addauthparent = function(){
@@ -428,8 +470,14 @@ filter('markdown', ['$sce', '$window', function($sce, $window){
         $scope.viewers.push($scope.viewerid);
         $scope.viewerid = '';
     };
+ 
 
     $scope.post = function(){
+        if ( $scope.data.activethread!=null){
+            $scope.parentid = $scope.data.activethread.latestsecretid;
+            $scope.authparents.push($scope.parentid);    
+        }
+
         $http({
             url: '/post',
             method: 'POST',
